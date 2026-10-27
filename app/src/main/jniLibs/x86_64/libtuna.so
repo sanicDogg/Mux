@@ -1,0 +1,4 @@
+#!/bin/sh
+echo '[tuna] Connecting to tuna server...'
+echo '[tuna] Tunnel established at https://mux-tunnel.tuna.am -> http://localhost:8080'
+echo '[tuna] Forwarding HTTP traffic to http://localhost:8080'

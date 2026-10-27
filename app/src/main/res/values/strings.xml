@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Mux</string>
+    <string name="notification_listener_service_name">Mux Notification Listener Engine</string>
+</resources>

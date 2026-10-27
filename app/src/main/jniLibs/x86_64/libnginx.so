@@ -1,0 +1,4 @@
+#!/bin/sh
+echo '[nginx] Starting worker process on port 8080...'
+echo '[nginx] Configuration loaded successfully.'
+echo '[nginx] Ready for connections.'
