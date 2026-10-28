@@ -94,23 +94,24 @@ class NotificationLogViewModel(
         initialValue = NotificationLogUiState()
     )
 
-    fun setSearchQuery(query: String) {
-        _searchQuery.value = query
+    fun onAction(action: NotificationAction) {
+        when (action) {
+            is NotificationAction.Search -> _searchQuery.value = action.query
+            is NotificationAction.FilterStatus -> _statusFilter.value = action.status
+            is NotificationAction.SelectEntry -> _selectedEntry.value = action.entry
+            is NotificationAction.ResendNotification -> resendNotification(action.entry)
+            NotificationAction.ClearLogs -> {
+                notificationLogRepository.clearLogs()
+                _selectedEntry.value = null
+            }
+            NotificationAction.ClearStatusMessage -> {
+                _statusMessage.value = null
+                _resendResult.value = null
+            }
+        }
     }
 
-    fun setStatusFilter(filter: NotificationStatusFilter) {
-        _statusFilter.value = filter
-    }
-
-    fun selectEntry(entry: NotificationLogEntry?) {
-        _selectedEntry.value = entry
-    }
-
-    fun clearSelection() {
-        _selectedEntry.value = null
-    }
-
-    fun resendNotification(entry: NotificationLogEntry) {
+    private fun resendNotification(entry: NotificationLogEntry) {
         viewModelScope.launch {
             _isResending.value = true
             _resendResult.value = null
@@ -142,16 +143,6 @@ class NotificationLogViewModel(
                 _isResending.value = false
             }
         }
-    }
-
-    fun clearLogs() {
-        notificationLogRepository.clearLogs()
-        _selectedEntry.value = null
-    }
-
-    fun clearStatusMessage() {
-        _statusMessage.value = null
-        _resendResult.value = null
     }
 
     class Factory(private val app: MuxApplication = MuxApplication.instance) : ViewModelProvider.Factory {

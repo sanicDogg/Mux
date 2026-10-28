@@ -6,6 +6,7 @@ import com.example.mux.data.model.NotificationPayload
 import com.example.mux.data.repository.InMemoryNotificationLogRepository
 import com.example.mux.data.repository.NotificationLogEntry
 import com.example.mux.data.repository.SettingsRepository
+import com.example.mux.ui.notifications.NotificationAction
 import com.example.mux.ui.notifications.NotificationLogViewModel
 import com.example.mux.ui.notifications.NotificationStatusFilter
 import kotlinx.coroutines.Dispatchers
@@ -112,14 +113,14 @@ class NotificationLogViewModelTest {
         logRepository.addLog(NotificationLogEntry(payload1, ForwardingStatus(isSuccess = true)))
         logRepository.addLog(NotificationLogEntry(payload2, ForwardingStatus(isSuccess = false, errorMessage = "Timeout")))
 
-        viewModel.setSearchQuery("WhatsApp")
+        viewModel.onAction(NotificationAction.Search("WhatsApp"))
 
         var state = viewModel.uiState.value
         assertEquals(1, state.filteredLogs.size)
         assertEquals("com.whatsapp", state.filteredLogs[0].payload.packageName)
 
-        viewModel.setSearchQuery("")
-        viewModel.setStatusFilter(NotificationStatusFilter.FAILED)
+        viewModel.onAction(NotificationAction.Search(""))
+        viewModel.onAction(NotificationAction.FilterStatus(NotificationStatusFilter.FAILED))
 
         state = viewModel.uiState.value
         assertEquals(1, state.filteredLogs.size)
@@ -135,10 +136,10 @@ class NotificationLogViewModelTest {
         val entry = NotificationLogEntry(payload, ForwardingStatus(isSuccess = false, errorMessage = "Failed"))
         logRepository.addLog(entry)
 
-        viewModel.selectEntry(entry)
+        viewModel.onAction(NotificationAction.SelectEntry(entry))
 
         dataForwarder.shouldSucceed = true
-        viewModel.resendNotification(entry)
+        viewModel.onAction(NotificationAction.ResendNotification(entry))
 
         assertNotNull(dataForwarder.lastPayloadSent)
         assertEquals("http://127.0.0.1:8080/api/notifications", dataForwarder.lastEndpointUrl)
@@ -155,7 +156,7 @@ class NotificationLogViewModelTest {
         val payload = NotificationPayload(id = "1", packageName = "com.app", postTime = 100, timestampIso = "2026-08-27T00:00:00Z")
         logRepository.addLog(NotificationLogEntry(payload, ForwardingStatus(isSuccess = true)))
 
-        viewModel.clearLogs()
+        viewModel.onAction(NotificationAction.ClearLogs)
 
         val state = viewModel.uiState.value
         assertTrue(state.logs.isEmpty())
