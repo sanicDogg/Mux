@@ -11,6 +11,11 @@ data class ProcessLogEntry(
     val source: LogSource,
     val message: String
 ) {
-    val formattedTimestamp: String
-        get() = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date(timestamp))
+    val formattedTimestamp: String = formatter.get()?.format(Date(timestamp)) ?: ""
+
+    companion object {
+        private val formatter = object : ThreadLocal<SimpleDateFormat>() {
+            override fun initialValue() = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault())
+        }
+    }
 }

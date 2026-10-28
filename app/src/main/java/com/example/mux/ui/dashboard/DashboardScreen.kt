@@ -143,7 +143,7 @@ fun DashboardContent(
 
         // Live Terminal Console Section
         ConsoleLogCard(
-            logs = state.filteredLogs,
+            logsProvider = { state.filteredLogs },
             sourceFilter = state.sourceFilter,
             tagFilter = state.tagFilter,
             isAutoScrollEnabled = state.isAutoScrollEnabled,
@@ -161,7 +161,7 @@ fun DashboardContent(
 
 @Composable
 fun ConsoleLogCard(
-    logs: List<ProcessLogEntry>,
+    logsProvider: () -> List<ProcessLogEntry>,
     sourceFilter: LogSourceFilter,
     tagFilter: LogTagFilter,
     isAutoScrollEnabled: Boolean,
@@ -173,12 +173,6 @@ fun ConsoleLogCard(
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
-
-    LaunchedEffect(logs.size, isAutoScrollEnabled) {
-        if (isAutoScrollEnabled && logs.isNotEmpty()) {
-            listState.animateScrollToItem(logs.size - 1)
-        }
-    }
 
     Card(
         modifier = modifier,
@@ -257,52 +251,80 @@ fun ConsoleLogCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Terminal Log View Area
-            Surface(
+            TerminalLogViewArea(
+                logsProvider = logsProvider,
+                listState = listState,
+                isAutoScrollEnabled = isAutoScrollEnabled,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f),
-                color = Color(0xFF1E1E1E), // Dark terminal background
-                shape = RoundedCornerShape(8.dp)
+                    .weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+fun TerminalLogViewArea(
+    logsProvider: () -> List<ProcessLogEntry>,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    isAutoScrollEnabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val logs = logsProvider()
+
+    LaunchedEffect(logs.size, isAutoScrollEnabled) {
+        if (isAutoScrollEnabled && logs.isNotEmpty()) {
+            listState.animateScrollToItem(logs.size - 1)
+        }
+    }
+
+    Surface(
+        modifier = modifier,
+        color = Color(0xFF1E1E1E), // Dark terminal background
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        if (logs.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
             ) {
-                if (logs.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "No log output available...",
-                            color = Color(0xFF888888),
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 13.sp
-                        )
-                    }
-                } else {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        items(logs) { entry ->
-                            LogItemRow(entry = entry)
-                        }
-                    }
+                Text(
+                    text = "No log output available...",
+                    color = Color(0xFF888888),
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 13.sp
+                )
+            }
+        } else {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                items(logs, key = { it.id }) { entry ->
+                    LogItemRow(entry = entry)
                 }
             }
         }
     }
 }
 
+private val SystemLogColor = Color(0xFFFFD54F)
+private val ErrorLogColor = Color(0xFFFF8A65)
+private val NginxLogColor = Color(0xFF81C784)
+private val TunaLogColor = Color(0xFF4FC3F7)
+private val DefaultLogColor = Color(0xFFE0E0E0)
+
 @Composable
 fun LogItemRow(entry: ProcessLogEntry) {
     val textColor = when {
-        entry.message.startsWith("[SYSTEM]") -> Color(0xFFFFD54F) // Yellow
-        entry.source == LogSource.STDERR -> Color(0xFFFF8A65) // Light Red/Orange
-        entry.processTag == ProcessTag.NGINX -> Color(0xFF81C784) // Green
-        entry.processTag == ProcessTag.TUNA -> Color(0xFF4FC3F7) // Cyan
-        else -> Color(0xFFE0E0E0)
+        entry.message.startsWith("[SYSTEM]") -> SystemLogColor
+        entry.source == LogSource.STDERR -> ErrorLogColor
+        entry.processTag == ProcessTag.NGINX -> NginxLogColor
+        entry.processTag == ProcessTag.TUNA -> TunaLogColor
+        else -> DefaultLogColor
     }
 
     Row(modifier = Modifier.fillMaxWidth()) {
@@ -332,8 +354,8 @@ fun DashboardScreenPreview() {
             ),
             isNotificationListenerGranted = false,
             onStartNginx = {},
-            onStopNginx = {},
             onStartTuna = {},
+            onStopNginx = {},
             onStopTuna = {},
             onSourceFilterSelected = {},
             onTagFilterSelected = {},
