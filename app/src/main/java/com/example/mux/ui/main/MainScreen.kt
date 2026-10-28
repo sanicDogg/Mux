@@ -172,7 +172,6 @@ private fun MuxScreenContent(
     when (destination) {
         MuxDestination.DASHBOARD -> DashboardScreen(
             viewModel = viewModel(factory = DashboardViewModel.Factory()),
-            isNotificationListenerGranted = isNotificationListenerGranted,
             snackbarHostState = snackbarHostState
         )
         MuxDestination.NOTIFICATIONS -> NotificationScreen(

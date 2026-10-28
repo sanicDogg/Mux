@@ -32,7 +32,6 @@ import com.example.mux.ui.theme.MuxTheme
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel,
-    isNotificationListenerGranted: Boolean,
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState? = null
 ) {
@@ -71,7 +70,6 @@ fun DashboardScreen(
         sourceFilter = state.sourceFilter,
         tagFilter = state.tagFilter,
         isAutoScrollEnabled = state.isAutoScrollEnabled,
-        isNotificationListenerGranted = isNotificationListenerGranted,
         onStartNginx = onStartNginx,
         onStopNginx = onStopNginx,
         onStartTuna = onStartTuna,
@@ -93,7 +91,6 @@ fun DashboardContent(
     sourceFilter: LogSourceFilter,
     tagFilter: LogTagFilter,
     isAutoScrollEnabled: Boolean,
-    isNotificationListenerGranted: Boolean,
     onStartNginx: () -> Unit,
     onStopNginx: () -> Unit,
     onStartTuna: () -> Unit,
@@ -111,10 +108,6 @@ fun DashboardContent(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        if (!isNotificationListenerGranted) {
-            PermissionBanner(isGranted = false)
-        }
-
         // Process Status Cards
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -172,7 +165,6 @@ fun DashboardScreenPreview() {
             sourceFilter = LogSourceFilter.ALL,
             tagFilter = LogTagFilter.ALL,
             isAutoScrollEnabled = true,
-            isNotificationListenerGranted = false,
             onStartNginx = {},
             onStartTuna = {},
             onStopNginx = {},
