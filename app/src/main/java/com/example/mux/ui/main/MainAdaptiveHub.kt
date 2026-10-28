@@ -55,209 +55,200 @@ import com.example.mux.ui.webserver.NginxConfigViewModel
 import com.example.mux.ui.webserver.WebServerConfigScreen
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainAdaptiveHub(
-    dashboardViewModel: DashboardViewModel = viewModel(factory = DashboardViewModel.Factory()),
-    notificationLogViewModel: NotificationLogViewModel = viewModel(factory = NotificationLogViewModel.Factory()),
-    nginxConfigViewModel: NginxConfigViewModel = viewModel(factory = NginxConfigViewModel.Factory()),
-    settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory()),
-    modifier: Modifier = Modifier
-) {
+fun MainAdaptiveHub(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
     var isNotificationListenerGranted by remember { mutableStateOf(false) }
-
-    fun checkPermission() {
-        val flat = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
-        isNotificationListenerGranted = flat != null && flat.contains(context.packageName)
-    }
-
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                checkPermission()
-                settingsViewModel.checkPermission(context)
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
-
     var currentDestination by rememberSaveable { mutableStateOf(MuxDestination.DASHBOARD) }
+    
     val windowAdaptiveInfo = currentWindowAdaptiveInfoV2()
     val isCompact = windowAdaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
 
     val snackbarHostState = remember { SnackbarHostState() }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    
+    val destinations = remember { MuxDestination.entries }
+    
+    val onOpenMenu = remember { { scope.launch { drawerState.open() } } }
 
-    if (isCompact) {
-        // Phone Layout with Modal Navigation Drawer (Burger Menu)
-        ModalNavigationDrawer(
-            drawerState = drawerState,
-            drawerContent = {
-                ModalDrawerSheet {
-                    Text(
-                        text = "MUX Control Hub",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(24.dp)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    MuxDestination.entries.forEach { destination ->
-                        NavigationDrawerItem(
-                            icon = { Icon(destination.icon, contentDescription = destination.title) },
-                            label = { Text(destination.title) },
-                            selected = currentDestination == destination,
-                            onClick = {
-                                currentDestination = destination
-                                scope.launch { drawerState.close() }
-                            },
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                        )
-                    }
-                }
-            }
-        ) {
-            Scaffold(
-                modifier = modifier.fillMaxSize(),
-                topBar = {
-                    TopAppBar(
-                        title = {
-                            Text(
-                                text = currentDestination.title,
-                                fontWeight = FontWeight.Bold
-                            )
-                        },
-                        navigationIcon = {
-                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                Icon(imageVector = Icons.Rounded.Menu, contentDescription = "Open Menu")
-                            }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    )
-                },
-                snackbarHost = { SnackbarHost(snackbarHostState) }
-            ) { innerPadding ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                ) {
-                    Crossfade(targetState = currentDestination, label = "Screen Transition") { dest ->
-                        MuxScreenContent(
-                            destination = dest,
-                            dashboardViewModel = dashboardViewModel,
-                            notificationLogViewModel = notificationLogViewModel,
-                            nginxConfigViewModel = nginxConfigViewModel,
-                            settingsViewModel = settingsViewModel,
-                            isNotificationListenerGranted = isNotificationListenerGranted,
-                            snackbarHostState = snackbarHostState
-                        )
-                    }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    val flat = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
+                    isNotificationListenerGranted = flat != null && flat.contains(context.packageName)
                 }
             }
         }
-    } else {
-        // Tablet / Foldable / Expanded Layout with Side Navigation Rail
-        Row(modifier = modifier.fillMaxSize()) {
-            NavigationRail(
-                header = {
-                    Text(
-                        text = "MUX",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(vertical = 16.dp)
-                    )
-                }
-            ) {
-                MuxDestination.entries.forEach { destination ->
-                    NavigationRailItem(
-                        selected = currentDestination == destination,
-                        onClick = { currentDestination = destination },
-                        icon = { Icon(imageVector = destination.icon, contentDescription = destination.title) },
-                        label = { Text(destination.title) }
-                    )
-                }
-            }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
-            Scaffold(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxSize(),
-                topBar = {
-                    TopAppBar(
-                        title = {
-                            Text(
-                                text = currentDestination.title,
-                                fontWeight = FontWeight.Bold
-                            )
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    )
-                },
-                snackbarHost = { SnackbarHost(snackbarHostState) }
-            ) { innerPadding ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                ) {
-                    Crossfade(targetState = currentDestination, label = "Screen Transition") { dest ->
-                        MuxScreenContent(
-                            destination = dest,
-                            dashboardViewModel = dashboardViewModel,
-                            notificationLogViewModel = notificationLogViewModel,
-                            nginxConfigViewModel = nginxConfigViewModel,
-                            settingsViewModel = settingsViewModel,
-                            isNotificationListenerGranted = isNotificationListenerGranted,
-                            snackbarHostState = snackbarHostState
-                        )
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        gesturesEnabled = isCompact,
+        drawerContent = {
+            if (isCompact) {
+                AppDrawerContent(
+                    destinations = destinations,
+                    currentDestination = currentDestination,
+                    onNavigate = { 
+                        currentDestination = it
+                        scope.launch { drawerState.close() }
                     }
-                }
+                )
             }
+        }
+    ) {
+        Row(modifier = modifier.fillMaxSize()) {
+            if (!isCompact) {
+                AppNavigationRail(
+                    destinations = destinations,
+                    currentDestination = currentDestination,
+                    onNavigate = { currentDestination = it }
+                )
+            }
+            AppScaffold(
+                destination = currentDestination,
+                isCompact = isCompact,
+                snackbarHostState = snackbarHostState,
+                isNotificationListenerGranted = isNotificationListenerGranted,
+                onOpenMenu = { onOpenMenu() },
+                modifier = if (isCompact) Modifier else Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AppScaffold(
+    destination: MuxDestination,
+    isCompact: Boolean,
+    snackbarHostState: SnackbarHostState,
+    isNotificationListenerGranted: Boolean,
+    onOpenMenu: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val currentTitle = destination.title
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = { Text(text = currentTitle, fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    if (isCompact) {
+                        IconButton(onClick = onOpenMenu) {
+                            Icon(imageVector = Icons.Rounded.Menu, contentDescription = "Open Menu")
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { innerPadding ->
+        Crossfade(
+            targetState = destination,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            label = "Screen Transition"
+        ) { dest ->
+            MuxScreenContent(
+                destination = dest,
+                isNotificationListenerGranted = isNotificationListenerGranted,
+                snackbarHostState = snackbarHostState
+            )
         }
     }
 }
 
 @Composable
-fun MuxScreenContent(
+private fun MuxScreenContent(
     destination: MuxDestination,
-    dashboardViewModel: DashboardViewModel,
-    notificationLogViewModel: NotificationLogViewModel,
-    nginxConfigViewModel: NginxConfigViewModel,
-    settingsViewModel: SettingsViewModel,
     isNotificationListenerGranted: Boolean,
     snackbarHostState: SnackbarHostState
 ) {
     when (destination) {
         MuxDestination.DASHBOARD -> DashboardScreen(
-            viewModel = dashboardViewModel,
+            viewModel = viewModel(factory = DashboardViewModel.Factory()),
             isNotificationListenerGranted = isNotificationListenerGranted,
             snackbarHostState = snackbarHostState
         )
         MuxDestination.NOTIFICATIONS -> NotificationScreen(
-            viewModel = notificationLogViewModel,
+            viewModel = viewModel(factory = NotificationLogViewModel.Factory()),
             isNotificationListenerGranted = isNotificationListenerGranted,
             snackbarHostState = snackbarHostState
         )
         MuxDestination.WEB_SERVER -> WebServerConfigScreen(
-            viewModel = nginxConfigViewModel,
+            viewModel = viewModel(factory = NginxConfigViewModel.Factory()),
             snackbarHostState = snackbarHostState
         )
         MuxDestination.SETTINGS -> SettingsScreen(
-            viewModel = settingsViewModel,
+            viewModel = viewModel(factory = SettingsViewModel.Factory()),
             snackbarHostState = snackbarHostState
         )
+    }
+}
+
+@Composable
+private fun AppDrawerContent(
+    destinations: List<MuxDestination>,
+    currentDestination: MuxDestination,
+    onNavigate: (MuxDestination) -> Unit
+) {
+    ModalDrawerSheet {
+        Text(
+            text = "MUX Control Hub",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(24.dp)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        destinations.forEach { destination ->
+            NavigationDrawerItem(
+                icon = { Icon(destination.icon, contentDescription = destination.title) },
+                label = { Text(destination.title) },
+                selected = currentDestination == destination,
+                onClick = { onNavigate(destination) },
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun AppNavigationRail(
+    destinations: List<MuxDestination>,
+    currentDestination: MuxDestination,
+    onNavigate: (MuxDestination) -> Unit
+) {
+    NavigationRail(
+        header = {
+            Text(
+                text = "MUX",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(vertical = 16.dp)
+            )
+        }
+    ) {
+        destinations.forEach { destination ->
+            NavigationRailItem(
+                selected = currentDestination == destination,
+                onClick = { onNavigate(destination) },
+                icon = { Icon(imageVector = destination.icon, contentDescription = destination.title) },
+                label = { Text(destination.title) }
+            )
+        }
     }
 }
