@@ -1,4 +1,11 @@
 <resources>
     <string name="app_name">Mux</string>
     <string name="notification_listener_service_name">Mux Notification Listener Engine</string>
+    <string name="acc_open_menu">Open menu</string>
+    <string name="mux_control_hub">MUX Control Hub</string>
+    <string name="mux_short_title">MUX</string>
+    <string name="title_dashboard">Dashboard</string>
+    <string name="title_notifications">Notifications</string>
+    <string name="title_web_server">Web Server</string>
+    <string name="title_settings">Settings</string>
 </resources>
