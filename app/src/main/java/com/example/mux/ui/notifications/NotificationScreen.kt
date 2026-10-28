@@ -45,6 +45,7 @@ import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaf
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -182,11 +183,19 @@ fun NotificationListPane(
                     )
                 }
 
-                IconButton(onClick = { onAction(NotificationAction.ClearLogs) }) {
-                    Icon(
-                        imageVector = Icons.Rounded.Delete, 
-                        contentDescription = stringResource(R.string.acc_clear_logs)
-                    )
+                Row {
+                    IconButton(onClick = { onAction(NotificationAction.FetchActiveNotifications) }) {
+                        Icon(
+                            imageVector = Icons.Rounded.Refresh,
+                            contentDescription = stringResource(R.string.acc_fetch_active)
+                        )
+                    }
+                    IconButton(onClick = { onAction(NotificationAction.ClearLogs) }) {
+                        Icon(
+                            imageVector = Icons.Rounded.Delete, 
+                            contentDescription = stringResource(R.string.acc_clear_logs)
+                        )
+                    }
                 }
             }
         }
@@ -252,18 +261,27 @@ fun NotificationListPane(
                     .weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(state.filteredLogs, key = { it.payload.id + "_" + it.loggedAt }) { entry ->
+                items(
+                    items = state.filteredLogs,
+                    key = { it.payload.id + "_" + it.loggedAt }
+                ) { entry ->
                     val isSelected = entry.payload.id == state.selectedEntry?.payload?.id
+                    val onClick = remember(entry.payload.id, entry.loggedAt) {
+                        { onAction(NotificationAction.SelectEntry(entry)) }
+                    }
                     NotificationLogItemCard(
                         entry = entry,
                         isSelected = isSelected,
-                        onClick = { onAction(NotificationAction.SelectEntry(entry)) }
+                        onClick = onClick
                     )
                 }
             }
         }
     }
 }
+
+private val SelectedCardElevation = 4.dp
+private val UnselectedCardElevation = 1.dp
 
 @Composable
 fun NotificationLogItemCard(
@@ -273,6 +291,9 @@ fun NotificationLogItemCard(
 ) {
     val payload = entry.payload
     val isSuccess = entry.status.isSuccess
+    val formattedTime = remember(payload.timestampIso) {
+        payload.timestampIso.takeLast(12).take(8)
+    }
 
     Card(
         modifier = Modifier
@@ -282,7 +303,7 @@ fun NotificationLogItemCard(
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 4.dp else 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) SelectedCardElevation else UnselectedCardElevation)
     ) {
         Row(
             modifier = Modifier
@@ -311,7 +332,7 @@ fun NotificationLogItemCard(
                         color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = payload.timestampIso.takeLast(12).take(8),
+                        text = formattedTime,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

@@ -1,5 +1,6 @@
 package com.example.mux.data.repository
 
+import androidx.compose.runtime.Immutable
 import com.example.mux.data.model.ForwardingStatus
 import com.example.mux.data.model.NotificationPayload
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -7,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.concurrent.ConcurrentLinkedQueue
 
+@Immutable
 data class NotificationLogEntry(
     val payload: NotificationPayload,
     val status: ForwardingStatus,
@@ -16,6 +18,7 @@ data class NotificationLogEntry(
 interface NotificationLogRepository {
     val logs: StateFlow<List<NotificationLogEntry>>
     fun addLog(entry: NotificationLogEntry)
+    fun addLogs(entries: List<NotificationLogEntry>)
     fun clearLogs()
 }
 
@@ -26,6 +29,14 @@ class InMemoryNotificationLogRepository : NotificationLogRepository {
 
     override fun addLog(entry: NotificationLogEntry) {
         logList.add(entry)
+        while (logList.size > 100) {
+            logList.poll()
+        }
+        _logs.value = logList.toList().reversed()
+    }
+
+    override fun addLogs(entries: List<NotificationLogEntry>) {
+        logList.addAll(entries)
         while (logList.size > 100) {
             logList.poll()
         }

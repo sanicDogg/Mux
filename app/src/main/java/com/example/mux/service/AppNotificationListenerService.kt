@@ -23,6 +23,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
@@ -53,12 +54,14 @@ class AppNotificationListenerService : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
+        instance = this
         _isServiceConnected.value = true
         Log.i(TAG, "NotificationListenerService connected to system")
     }
 
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
+        instance = null
         _isServiceConnected.value = false
         Log.w(TAG, "NotificationListenerService disconnected from system")
     }
@@ -109,11 +112,50 @@ class AppNotificationListenerService : NotificationListenerService() {
         super.onDestroy()
         notificationCollector.stopCollecting()
         _isServiceConnected.value = false
+        instance = null
         serviceScope.cancel()
         if (::dataForwarder.isInitialized && dataForwarder is KtorDataForwarder) {
             (dataForwarder as KtorDataForwarder).close()
         }
         Log.d(TAG, "AppNotificationListenerService destroyed")
+    }
+
+    suspend fun fetchAndSendActiveNotifications() = withContext(Dispatchers.IO) {
+        val activeNotifs = try {
+            activeNotifications
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get active notifications", e)
+            null
+        } ?: return@withContext
+
+        if (!settingsRepository.isNotificationForwardingEnabled()) {
+            Log.d(TAG, "Notification forwarding is disabled in settings. Skipping active notifications.")
+            return@withContext
+        }
+
+        val payloads = activeNotifs.mapNotNull { sbn ->
+            val pkgName = sbn.packageName ?: return@mapNotNull null
+            if (pkgName == packageName) return@mapNotNull null
+            extractNotificationPayload(sbn)
+        }
+
+        if (payloads.isEmpty()) return@withContext
+
+        val jsonPayloadArray = Json.encodeToString(payloads)
+        Log.d(TAG, "Captured active notifications. Forwarding array payload: $jsonPayloadArray")
+
+        val result = dataForwarder.forwardData(jsonPayloadArray)
+        val status = if (result.isSuccess) {
+            Log.i(TAG, "Successfully forwarded array payload of ${payloads.size} active notifications")
+            ForwardingStatus(isSuccess = true)
+        } else {
+            val err = result.exceptionOrNull()?.message ?: "Unknown error"
+            Log.e(TAG, "Failed to forward array payload of ${payloads.size} active notifications: $err")
+            ForwardingStatus(isSuccess = false, errorMessage = err)
+        }
+
+        val entries = payloads.map { NotificationLogEntry(it, status) }
+        logRepository.addLogs(entries)
     }
 
     private fun extractNotificationPayload(sbn: StatusBarNotification): NotificationPayload {
@@ -171,6 +213,9 @@ class AppNotificationListenerService : NotificationListenerService() {
 
     companion object {
         private const val TAG = "NotificationEngine"
+
+        var instance: AppNotificationListenerService? = null
+            private set
 
         val logRepository: NotificationLogRepository = InMemoryNotificationLogRepository()
 

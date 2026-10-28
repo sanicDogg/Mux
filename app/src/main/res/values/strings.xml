@@ -4,6 +4,7 @@
     <string name="acc_open_menu">Open menu</string>
     <string name="acc_back">Back</string>
     <string name="acc_clear_logs">Clear notification logs</string>
+    <string name="acc_fetch_active">Fetch active notifications</string>
     <string name="mux_control_hub">MUX Control Hub</string>
     <string name="mux_short_title">MUX</string>
     <string name="title_dashboard">Dashboard</string>

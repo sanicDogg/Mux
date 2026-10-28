@@ -1,5 +1,6 @@
 package com.example.mux.ui.notifications
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -18,10 +19,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
 enum class NotificationStatusFilter { ALL, SUCCESS, FAILED }
 
+@Immutable
 data class NotificationLogUiState(
     val logs: List<NotificationLogEntry> = emptyList(),
     val filteredLogs: List<NotificationLogEntry> = emptyList(),
@@ -56,38 +60,40 @@ class NotificationLogViewModel(
         _selectedEntry,
         isServiceConnectedFlow
     ) { logs, query, statusFilter, selected, isConnected ->
-        val endpointUrl = settingsRepository.getServerUrl()
+        withContext(Dispatchers.Default) {
+            val endpointUrl = settingsRepository.getServerUrl()
 
-        val filtered = logs.filter { entry ->
-            val payload = entry.payload
-            val matchesQuery = query.isBlank() ||
-                (payload.title?.contains(query, ignoreCase = true) == true) ||
-                (payload.text?.contains(query, ignoreCase = true) == true) ||
-                (payload.appName?.contains(query, ignoreCase = true) == true) ||
-                (payload.packageName.contains(query, ignoreCase = true)) ||
-                (payload.id.contains(query, ignoreCase = true))
+            val filtered = logs.filter { entry ->
+                val payload = entry.payload
+                val matchesQuery = query.isBlank() ||
+                    (payload.title?.contains(query, ignoreCase = true) == true) ||
+                    (payload.text?.contains(query, ignoreCase = true) == true) ||
+                    (payload.appName?.contains(query, ignoreCase = true) == true) ||
+                    (payload.packageName.contains(query, ignoreCase = true)) ||
+                    (payload.id.contains(query, ignoreCase = true))
 
-            val matchesStatus = when (statusFilter) {
-                NotificationStatusFilter.ALL -> true
-                NotificationStatusFilter.SUCCESS -> entry.status.isSuccess
-                NotificationStatusFilter.FAILED -> !entry.status.isSuccess
+                val matchesStatus = when (statusFilter) {
+                    NotificationStatusFilter.ALL -> true
+                    NotificationStatusFilter.SUCCESS -> entry.status.isSuccess
+                    NotificationStatusFilter.FAILED -> !entry.status.isSuccess
+                }
+
+                matchesQuery && matchesStatus
             }
 
-            matchesQuery && matchesStatus
+            NotificationLogUiState(
+                logs = logs,
+                filteredLogs = filtered,
+                searchQuery = query,
+                statusFilter = statusFilter,
+                selectedEntry = selected,
+                isServiceConnected = isConnected,
+                serverEndpointUrl = endpointUrl,
+                isResending = _isResending.value,
+                resendResult = _resendResult.value,
+                statusMessage = _statusMessage.value
+            )
         }
-
-        NotificationLogUiState(
-            logs = logs,
-            filteredLogs = filtered,
-            searchQuery = query,
-            statusFilter = statusFilter,
-            selectedEntry = selected,
-            isServiceConnected = isConnected,
-            serverEndpointUrl = endpointUrl,
-            isResending = _isResending.value,
-            resendResult = _resendResult.value,
-            statusMessage = _statusMessage.value
-        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -107,6 +113,11 @@ class NotificationLogViewModel(
             NotificationAction.ClearStatusMessage -> {
                 _statusMessage.value = null
                 _resendResult.value = null
+            }
+            NotificationAction.FetchActiveNotifications -> {
+                viewModelScope.launch(Dispatchers.IO) {
+                    AppNotificationListenerService.instance?.fetchAndSendActiveNotifications()
+                }
             }
         }
     }

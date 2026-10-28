@@ -1,11 +1,13 @@
 package com.example.mux.data.model
 
+import androidx.compose.runtime.Immutable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
  * Standard data model representing a notification captured from the Android system.
  */
+@Immutable
 @Serializable
 data class NotificationPayload(
     @SerialName("id")
@@ -108,6 +110,7 @@ data class CallLogPayload(
 /**
  * Encapsulates status of data forwarding operations.
  */
+@Immutable
 @Serializable
 data class ForwardingStatus(
     val isSuccess: Boolean,

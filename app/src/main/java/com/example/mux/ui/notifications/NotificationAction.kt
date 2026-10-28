@@ -9,4 +9,5 @@ sealed interface NotificationAction {
     data class ResendNotification(val entry: NotificationLogEntry) : NotificationAction
     data object ClearLogs : NotificationAction
     data object ClearStatusMessage : NotificationAction
+    data object FetchActiveNotifications : NotificationAction
 }
