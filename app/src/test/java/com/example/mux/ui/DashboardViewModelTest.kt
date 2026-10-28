@@ -69,19 +69,23 @@ class DashboardViewModelTest {
     @Test
     fun testInitialUiState() = runTest(testDispatcher) {
         val collectJob = backgroundScope.launch { viewModel.uiState.collect() }
+        val logsCollectJob = backgroundScope.launch { viewModel.filteredLogs.collect() }
         val state = viewModel.uiState.value
+        val logs = viewModel.filteredLogs.value
         assertFalse(state.nginxStatus.isRunning)
         assertFalse(state.tunaStatus.isRunning)
-        assertTrue(state.logs.isEmpty())
+        assertTrue(logs.isEmpty())
         assertTrue(state.isAutoScrollEnabled)
         assertEquals(LogSourceFilter.ALL, state.sourceFilter)
         assertEquals(LogTagFilter.ALL, state.tagFilter)
         collectJob.cancel()
+        logsCollectJob.cancel()
     }
 
     @Test
     fun testLogFiltering() = runTest(testDispatcher) {
         val collectJob = backgroundScope.launch { viewModel.uiState.collect() }
+        val logsCollectJob = backgroundScope.launch { viewModel.filteredLogs.collect() }
 
         processLogRepository.addLog(ProcessTag.NGINX, LogSource.STDOUT, "Nginx stdout message")
         processLogRepository.addLog(ProcessTag.TUNA, LogSource.STDERR, "Tuna stderr message")
@@ -89,15 +93,17 @@ class DashboardViewModelTest {
         viewModel.setSourceFilter(LogSourceFilter.STDOUT)
         viewModel.setTagFilter(LogTagFilter.NGINX)
 
-        val state = viewModel.uiState.value
-        assertEquals(1, state.filteredLogs.size)
-        assertEquals("Nginx stdout message", state.filteredLogs[0].message)
+        val filteredLogs = viewModel.filteredLogs.value
+        assertEquals(1, filteredLogs.size)
+        assertEquals("Nginx stdout message", filteredLogs[0].message)
         collectJob.cancel()
+        logsCollectJob.cancel()
     }
 
     @Test
     fun testToggleAutoScrollAndClearLogs() = runTest(testDispatcher) {
         val collectJob = backgroundScope.launch { viewModel.uiState.collect() }
+        val logsCollectJob = backgroundScope.launch { viewModel.filteredLogs.collect() }
 
         processLogRepository.addLog(ProcessTag.NGINX, LogSource.STDOUT, "Message 1")
 
@@ -105,13 +111,15 @@ class DashboardViewModelTest {
         assertFalse(viewModel.uiState.value.isAutoScrollEnabled)
 
         viewModel.clearLogs()
-        assertTrue(viewModel.uiState.value.logs.isEmpty())
+        assertTrue(viewModel.filteredLogs.value.isEmpty())
         collectJob.cancel()
+        logsCollectJob.cancel()
     }
 
     @Test
     fun testGetFormattedLogsText() = runTest(testDispatcher) {
         val collectJob = backgroundScope.launch { viewModel.uiState.collect() }
+        val logsCollectJob = backgroundScope.launch { viewModel.filteredLogs.collect() }
 
         processLogRepository.addLog(ProcessTag.NGINX, LogSource.STDOUT, "Server running")
 
@@ -119,5 +127,6 @@ class DashboardViewModelTest {
         assertTrue(formattedText.contains("Server running"))
         assertTrue(formattedText.contains("NGINX"))
         collectJob.cancel()
+        logsCollectJob.cancel()
     }
 }

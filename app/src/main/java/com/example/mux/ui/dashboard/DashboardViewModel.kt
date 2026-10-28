@@ -27,8 +27,6 @@ enum class LogTagFilter { ALL, NGINX, TUNA }
 data class DashboardUiState(
     val nginxStatus: ProcessStatus = ProcessStatus(tag = ProcessTag.NGINX, isRunning = false),
     val tunaStatus: ProcessStatus = ProcessStatus(tag = ProcessTag.TUNA, isRunning = false),
-    val logs: List<ProcessLogEntry> = emptyList(),
-    val filteredLogs: List<ProcessLogEntry> = emptyList(),
     val sourceFilter: LogSourceFilter = LogSourceFilter.ALL,
     val tagFilter: LogTagFilter = LogTagFilter.ALL,
     val isAutoScrollEnabled: Boolean = true,
@@ -49,15 +47,33 @@ class DashboardViewModel(
 
     val uiState: StateFlow<DashboardUiState> = combine(
         nativeProcessManager.processStatuses,
-        processLogRepository.logs,
         _sourceFilter,
         _tagFilter,
         _isAutoScrollEnabled
-    ) { statuses, logs, sourceFilter, tagFilter, isAutoScroll ->
+    ) { statuses, sourceFilter, tagFilter, isAutoScroll ->
         val nginxStatus = statuses[ProcessTag.NGINX] ?: ProcessStatus(tag = ProcessTag.NGINX, isRunning = false)
         val tunaStatus = statuses[ProcessTag.TUNA] ?: ProcessStatus(tag = ProcessTag.TUNA, isRunning = false)
 
-        val filtered = logs.filter { entry ->
+        DashboardUiState(
+            nginxStatus = nginxStatus,
+            tunaStatus = tunaStatus,
+            sourceFilter = sourceFilter,
+            tagFilter = tagFilter,
+            isAutoScrollEnabled = isAutoScroll,
+            statusMessage = _statusMessage.value
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = DashboardUiState()
+    )
+
+    val filteredLogs: StateFlow<List<ProcessLogEntry>> = combine(
+        processLogRepository.logs,
+        _sourceFilter,
+        _tagFilter
+    ) { logs, sourceFilter, tagFilter ->
+        logs.filter { entry ->
             val matchSource = when (sourceFilter) {
                 LogSourceFilter.ALL -> true
                 LogSourceFilter.STDOUT -> entry.source == LogSource.STDOUT
@@ -70,21 +86,10 @@ class DashboardViewModel(
             }
             matchSource && matchTag
         }
-
-        DashboardUiState(
-            nginxStatus = nginxStatus,
-            tunaStatus = tunaStatus,
-            logs = logs,
-            filteredLogs = filtered,
-            sourceFilter = sourceFilter,
-            tagFilter = tagFilter,
-            isAutoScrollEnabled = isAutoScroll,
-            statusMessage = _statusMessage.value
-        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = DashboardUiState()
+        initialValue = emptyList()
     )
 
     fun startNginx() {
@@ -152,7 +157,7 @@ class DashboardViewModel(
     }
 
     fun getFormattedLogsText(): String {
-        return uiState.value.filteredLogs.joinToString("\n") { entry ->
+        return filteredLogs.value.joinToString("\n") { entry ->
             "[${entry.processTag}][${entry.source}] ${entry.formattedTimestamp}: ${entry.message}"
         }
     }
