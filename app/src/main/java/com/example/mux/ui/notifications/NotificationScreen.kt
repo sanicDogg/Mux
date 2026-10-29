@@ -15,6 +15,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.CardColors
+import androidx.compose.material3.CardElevation
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.key
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -72,6 +77,22 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
 private val prettyJson = Json { prettyPrint = true }
+
+@Immutable
+data class NotificationItemStyles(
+    val selectedColors: CardColors,
+    val unselectedColors: CardColors,
+    val selectedElevation: CardElevation,
+    val unselectedElevation: CardElevation,
+    val titleStyle: TextStyle,
+    val labelStyle: TextStyle,
+    val bodyMediumStyle: TextStyle,
+    val bodySmallStyle: TextStyle,
+    val selectedTitleColor: Color,
+    val unselectedTitleColor: Color,
+    val timeColor: Color,
+    val bodyColor: Color
+)
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
@@ -142,6 +163,21 @@ fun NotificationListPane(
     onAction: (NotificationAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val itemStyles = NotificationItemStyles(
+        selectedColors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        unselectedColors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        selectedElevation = CardDefaults.cardElevation(defaultElevation = SelectedCardElevation),
+        unselectedElevation = CardDefaults.cardElevation(defaultElevation = UnselectedCardElevation),
+        titleStyle = MaterialTheme.typography.titleSmall,
+        labelStyle = MaterialTheme.typography.labelSmall,
+        bodyMediumStyle = MaterialTheme.typography.bodyMedium,
+        bodySmallStyle = MaterialTheme.typography.bodySmall,
+        selectedTitleColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        unselectedTitleColor = MaterialTheme.colorScheme.onSurface,
+        timeColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        bodyColor = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -275,7 +311,8 @@ fun NotificationListPane(
                     NotificationLogItemCard(
                         entry = entry,
                         isSelected = isSelected,
-                        onClick = { onAction(NotificationAction.SelectEntry(entry)) }
+                        onClick = { onAction(NotificationAction.SelectEntry(entry)) },
+                        styles = itemStyles
                     )
                 }
             }
@@ -290,7 +327,8 @@ private val UnselectedCardElevation = 1.dp
 fun NotificationLogItemCard(
     entry: NotificationLogEntry,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    styles: NotificationItemStyles
 ) {
     val payload = entry.payload
     val isSuccess = entry.status.isSuccess
@@ -306,10 +344,8 @@ fun NotificationLogItemCard(
                 selected = isSelected
             }
             .clickable(role = Role.Button, onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) SelectedCardElevation else UnselectedCardElevation)
+        colors = if (isSelected) styles.selectedColors else styles.unselectedColors,
+        elevation = if (isSelected) styles.selectedElevation else styles.unselectedElevation
     ) {
         Row(
             modifier = Modifier
@@ -333,21 +369,21 @@ fun NotificationLogItemCard(
                 ) {
                     Text(
                         text = payload.appName ?: payload.packageName,
-                        style = MaterialTheme.typography.titleSmall,
+                        style = styles.titleStyle,
                         fontWeight = FontWeight.Bold,
-                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                        color = if (isSelected) styles.selectedTitleColor else styles.unselectedTitleColor
                     )
                     Text(
                         text = formattedTime,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = styles.labelStyle,
+                        color = styles.timeColor
                     )
                 }
 
                 if (!payload.title.isNullOrBlank()) {
                     Text(
                         text = payload.title,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = styles.bodyMediumStyle,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1
                     )
@@ -356,9 +392,9 @@ fun NotificationLogItemCard(
                 if (!payload.text.isNullOrBlank()) {
                     Text(
                         text = payload.text,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = styles.bodySmallStyle,
                         maxLines = 2,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = styles.bodyColor
                     )
                 }
             }
