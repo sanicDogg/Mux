@@ -163,20 +163,37 @@ fun NotificationListPane(
     onAction: (NotificationAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val itemStyles = NotificationItemStyles(
-        selectedColors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-        unselectedColors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        selectedElevation = CardDefaults.cardElevation(defaultElevation = SelectedCardElevation),
-        unselectedElevation = CardDefaults.cardElevation(defaultElevation = UnselectedCardElevation),
-        titleStyle = MaterialTheme.typography.titleSmall,
-        labelStyle = MaterialTheme.typography.labelSmall,
-        bodyMediumStyle = MaterialTheme.typography.bodyMedium,
-        bodySmallStyle = MaterialTheme.typography.bodySmall,
-        selectedTitleColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        unselectedTitleColor = MaterialTheme.colorScheme.onSurface,
-        timeColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        bodyColor = MaterialTheme.colorScheme.onSurfaceVariant
-    )
+    val colorScheme = MaterialTheme.colorScheme
+    val typography = MaterialTheme.typography
+    
+    val selectedColors = CardDefaults.cardColors(containerColor = colorScheme.primaryContainer)
+    val unselectedColors = CardDefaults.cardColors(containerColor = colorScheme.surface)
+    val selectedElevation = CardDefaults.cardElevation(defaultElevation = SelectedCardElevation)
+    val unselectedElevation = CardDefaults.cardElevation(defaultElevation = UnselectedCardElevation)
+
+    val itemStyles = remember(
+        selectedColors,
+        unselectedColors,
+        selectedElevation,
+        unselectedElevation,
+        colorScheme,
+        typography
+    ) {
+        NotificationItemStyles(
+            selectedColors = selectedColors,
+            unselectedColors = unselectedColors,
+            selectedElevation = selectedElevation,
+            unselectedElevation = unselectedElevation,
+            titleStyle = typography.titleSmall,
+            labelStyle = typography.labelSmall,
+            bodyMediumStyle = typography.bodyMedium,
+            bodySmallStyle = typography.bodySmall,
+            selectedTitleColor = colorScheme.onPrimaryContainer,
+            unselectedTitleColor = colorScheme.onSurface,
+            timeColor = colorScheme.onSurfaceVariant,
+            bodyColor = colorScheme.onSurfaceVariant
+        )
+    }
 
     Column(
         modifier = modifier
@@ -281,6 +298,8 @@ fun NotificationListPane(
             )
         }
 
+        val rememberedStyles = remember(itemStyles) { itemStyles }
+
         // Notification List
         if (state.filteredLogs.isEmpty()) {
             Box(
@@ -307,13 +326,17 @@ fun NotificationListPane(
                     key = { it.payload.id + "_" + it.loggedAt },
                     contentType = { "NotificationLogEntry" }
                 ) { entry ->
-                    val isSelected = entry.payload.id == state.selectedEntry?.payload?.id
-                    NotificationLogItemCard(
-                        entry = entry,
-                        isSelected = isSelected,
-                        onClick = { onAction(NotificationAction.SelectEntry(entry)) },
-                        styles = itemStyles
-                    )
+                    key(entry.payload.id, entry.status.timestamp) {
+                        val isSelected = remember(entry.payload.id, state.selectedEntry?.payload?.id) {
+                            entry.payload.id == state.selectedEntry?.payload?.id
+                        }
+                        NotificationLogItemCard(
+                            entry = entry,
+                            isSelected = isSelected,
+                            onClick = { onAction(NotificationAction.SelectEntry(entry)) },
+                            styles = rememberedStyles
+                        )
+                    }
                 }
             }
         }

@@ -23,12 +23,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
+
 enum class NotificationStatusFilter { ALL, SUCCESS, FAILED }
 
 @Immutable
 data class NotificationLogUiState(
-    val logs: List<NotificationLogEntry> = emptyList(),
-    val filteredLogs: List<NotificationLogEntry> = emptyList(),
+    val logs: ImmutableList<NotificationLogEntry> = persistentListOf(),
+    val filteredLogs: ImmutableList<NotificationLogEntry> = persistentListOf(),
     val searchQuery: String = "",
     val statusFilter: NotificationStatusFilter = NotificationStatusFilter.ALL,
     val selectedEntry: NotificationLogEntry? = null,
@@ -53,16 +57,12 @@ class NotificationLogViewModel(
     private val _resendResult = MutableStateFlow<String?>(null)
     private val _statusMessage = MutableStateFlow<String?>(null)
 
-    val uiState: StateFlow<NotificationLogUiState> = combine(
+    private val filteredLogsFlow = combine(
         notificationLogRepository.logs,
         _searchQuery,
-        _statusFilter,
-        _selectedEntry,
-        isServiceConnectedFlow
-    ) { logs, query, statusFilter, selected, isConnected ->
+        _statusFilter
+    ) { logs, query, statusFilter ->
         withContext(Dispatchers.Default) {
-            val endpointUrl = settingsRepository.getServerUrl()
-
             val filtered = logs.filter { entry ->
                 val payload = entry.payload
                 val matchesQuery = query.isBlank() ||
@@ -80,20 +80,47 @@ class NotificationLogViewModel(
 
                 matchesQuery && matchesStatus
             }
-
-            NotificationLogUiState(
-                logs = logs,
-                filteredLogs = filtered,
-                searchQuery = query,
-                statusFilter = statusFilter,
-                selectedEntry = selected,
-                isServiceConnected = isConnected,
-                serverEndpointUrl = endpointUrl,
-                isResending = _isResending.value,
-                resendResult = _resendResult.value,
-                statusMessage = _statusMessage.value
-            )
+            filtered.toImmutableList()
         }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), persistentListOf())
+
+    val uiState: StateFlow<NotificationLogUiState> = combine(
+        notificationLogRepository.logs,
+        filteredLogsFlow,
+        _searchQuery,
+        _statusFilter,
+        _selectedEntry,
+        isServiceConnectedFlow,
+        _isResending,
+        _resendResult,
+        _statusMessage
+    ) { args ->
+        @Suppress("UNCHECKED_CAST")
+        val logs = args[0] as ImmutableList<NotificationLogEntry>
+        @Suppress("UNCHECKED_CAST")
+        val filtered = args[1] as ImmutableList<NotificationLogEntry>
+        val query = args[2] as String
+        val statusFilter = args[3] as NotificationStatusFilter
+        val selected = args[4] as NotificationLogEntry?
+        val isConnected = args[5] as Boolean
+        val isResending = args[6] as Boolean
+        val resendResult = args[7] as String?
+        val statusMessage = args[8] as String?
+
+        val endpointUrl = settingsRepository.getServerUrl()
+
+        NotificationLogUiState(
+            logs = logs,
+            filteredLogs = filtered,
+            searchQuery = query,
+            statusFilter = statusFilter,
+            selectedEntry = selected,
+            isServiceConnected = isConnected,
+            serverEndpointUrl = endpointUrl,
+            isResending = isResending,
+            resendResult = resendResult,
+            statusMessage = statusMessage
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),

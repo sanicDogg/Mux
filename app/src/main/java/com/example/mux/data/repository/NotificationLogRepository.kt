@@ -6,6 +6,9 @@ import com.example.mux.data.model.NotificationPayload
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import java.util.concurrent.ConcurrentLinkedQueue
 
 @Immutable
@@ -16,7 +19,7 @@ data class NotificationLogEntry(
 )
 
 interface NotificationLogRepository {
-    val logs: StateFlow<List<NotificationLogEntry>>
+    val logs: StateFlow<ImmutableList<NotificationLogEntry>>
     fun addLog(entry: NotificationLogEntry)
     fun addLogs(entries: List<NotificationLogEntry>)
     fun clearLogs()
@@ -24,15 +27,15 @@ interface NotificationLogRepository {
 
 class InMemoryNotificationLogRepository : NotificationLogRepository {
     private val logList = ConcurrentLinkedQueue<NotificationLogEntry>()
-    private val _logs = MutableStateFlow<List<NotificationLogEntry>>(emptyList())
-    override val logs: StateFlow<List<NotificationLogEntry>> = _logs.asStateFlow()
+    private val _logs = MutableStateFlow<ImmutableList<NotificationLogEntry>>(persistentListOf())
+    override val logs: StateFlow<ImmutableList<NotificationLogEntry>> = _logs.asStateFlow()
 
     override fun addLog(entry: NotificationLogEntry) {
         logList.add(entry)
         while (logList.size > 100) {
             logList.poll()
         }
-        _logs.value = logList.toList().reversed()
+        _logs.value = logList.toList().asReversed().toImmutableList()
     }
 
     override fun addLogs(entries: List<NotificationLogEntry>) {
@@ -40,11 +43,11 @@ class InMemoryNotificationLogRepository : NotificationLogRepository {
         while (logList.size > 100) {
             logList.poll()
         }
-        _logs.value = logList.toList().reversed()
+        _logs.value = logList.toList().asReversed().toImmutableList()
     }
 
     override fun clearLogs() {
         logList.clear()
-        _logs.value = emptyList()
+        _logs.value = persistentListOf()
     }
 }
