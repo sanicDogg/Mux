@@ -52,7 +52,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -68,6 +70,8 @@ import com.example.mux.ui.components.PermissionBanner
 import com.example.mux.ui.theme.MuxTheme
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+
+private val prettyJson = Json { prettyPrint = true }
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
@@ -141,7 +145,8 @@ fun NotificationListPane(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(16.dp)
+            .imePadding(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // Service & Endpoint Status Header Card
@@ -263,16 +268,14 @@ fun NotificationListPane(
             ) {
                 items(
                     items = state.filteredLogs,
-                    key = { it.payload.id + "_" + it.loggedAt }
+                    key = { it.payload.id + "_" + it.loggedAt },
+                    contentType = { "NotificationLogEntry" }
                 ) { entry ->
                     val isSelected = entry.payload.id == state.selectedEntry?.payload?.id
-                    val onClick = remember(entry.payload.id, entry.loggedAt) {
-                        { onAction(NotificationAction.SelectEntry(entry)) }
-                    }
                     NotificationLogItemCard(
                         entry = entry,
                         isSelected = isSelected,
-                        onClick = onClick
+                        onClick = { onAction(NotificationAction.SelectEntry(entry)) }
                     )
                 }
             }
@@ -298,8 +301,10 @@ fun NotificationLogItemCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(role = Role.Button, onClick = onClick)
-            .semantics(mergeDescendants = true) {},
+            .semantics(mergeDescendants = true) {
+                selected = isSelected
+            }
+            .clickable(role = Role.Button, onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
         ),
@@ -385,17 +390,20 @@ fun NotificationInspectorPane(
             }
         } else {
             val payload = entry.payload
-            val jsonText = try {
-                Json { prettyPrint = true }.encodeToString(NotificationPayload.serializer(), payload)
-            } catch (e: Exception) {
-                payload.toString()
+            val jsonText = remember(payload) {
+                try {
+                    prettyJson.encodeToString(NotificationPayload.serializer(), payload)
+                } catch (e: Exception) {
+                    payload.toString()
+                }
             }
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp)
-                    .verticalScroll(rememberScrollState()),
+                    .verticalScroll(rememberScrollState())
+                    .imePadding(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Row(
