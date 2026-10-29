@@ -294,8 +294,9 @@ fun NotificationLogItemCard(
 ) {
     val payload = entry.payload
     val isSuccess = entry.status.isSuccess
-    val formattedTime = remember(payload.timestampIso) {
-        payload.timestampIso.takeLast(12).take(8)
+    val formattedTime = remember(payload.postTime) {
+        val formatter = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
+        formatter.format(java.util.Date(payload.postTime))
     }
 
     Card(
