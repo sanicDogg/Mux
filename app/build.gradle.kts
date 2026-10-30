@@ -23,9 +23,9 @@ android {
 
     buildTypes {
         release {
+            // Full R8 optimization (code + resource shrinking, full mode is default since AGP 8.0).
             optimization {
                 enable = true
-                packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
             }
         }
     }
