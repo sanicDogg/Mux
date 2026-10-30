@@ -43,8 +43,6 @@ import androidx.window.core.layout.WindowWidthSizeClass
 import com.example.mux.R
 import com.example.mux.ui.dashboard.DashboardScreen
 import com.example.mux.ui.dashboard.DashboardViewModel
-import com.example.mux.ui.notifications.NotificationLogViewModel
-import com.example.mux.ui.notifications.NotificationScreen
 import com.example.mux.ui.notifications.fast.FastNotificationScreen
 import com.example.mux.ui.notifications.fast.FastNotificationViewModel
 import com.example.mux.ui.settings.SettingsScreen
@@ -174,11 +172,6 @@ private fun MuxScreenContent(
     when (destination) {
         MuxDestination.DASHBOARD -> DashboardScreen(
             viewModel = viewModel(factory = DashboardViewModel.Factory()),
-            snackbarHostState = snackbarHostState
-        )
-        MuxDestination.NOTIFICATIONS -> NotificationScreen(
-            viewModel = viewModel(factory = NotificationLogViewModel.Factory()),
-            isNotificationListenerGranted = isNotificationListenerGranted,
             snackbarHostState = snackbarHostState
         )
         MuxDestination.NOTIFICATIONS_FAST -> FastNotificationScreen(

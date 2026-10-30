@@ -12,7 +12,6 @@ import com.example.mux.data.repository.NotificationLogEntry
 import com.example.mux.data.repository.NotificationLogRepository
 import com.example.mux.data.repository.SettingsRepository
 import com.example.mux.service.AppNotificationListenerService
-import com.example.mux.ui.notifications.NotificationStatusFilter
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -24,6 +23,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+
+enum class NotificationStatusFilter { ALL, SUCCESS, FAILED }
 
 private val prettyJson = Json { prettyPrint = true }
 

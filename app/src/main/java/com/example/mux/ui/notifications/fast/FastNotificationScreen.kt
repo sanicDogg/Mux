@@ -65,7 +65,7 @@ import com.example.mux.data.model.NotificationPayload
 import com.example.mux.data.repository.NotificationLogEntry
 import com.example.mux.ui.components.FilterChipGroup
 import com.example.mux.ui.components.PermissionBanner
-import com.example.mux.ui.notifications.NotificationStatusFilter
+import com.example.mux.ui.notifications.fast.NotificationStatusFilter
 import com.example.mux.ui.theme.MuxTheme
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat

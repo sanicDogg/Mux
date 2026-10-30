@@ -1,7 +1,5 @@
 package com.example.mux.ui.notifications.fast
 
-import com.example.mux.ui.notifications.NotificationStatusFilter
-
 /**
  * Action contract for the fast notifications screen.
  *
