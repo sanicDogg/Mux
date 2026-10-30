@@ -45,6 +45,8 @@ import com.example.mux.ui.dashboard.DashboardScreen
 import com.example.mux.ui.dashboard.DashboardViewModel
 import com.example.mux.ui.notifications.NotificationLogViewModel
 import com.example.mux.ui.notifications.NotificationScreen
+import com.example.mux.ui.notifications.fast.FastNotificationScreen
+import com.example.mux.ui.notifications.fast.FastNotificationViewModel
 import com.example.mux.ui.settings.SettingsScreen
 import com.example.mux.ui.settings.SettingsViewModel
 import com.example.mux.ui.webserver.NginxConfigViewModel
@@ -176,6 +178,11 @@ private fun MuxScreenContent(
         )
         MuxDestination.NOTIFICATIONS -> NotificationScreen(
             viewModel = viewModel(factory = NotificationLogViewModel.Factory()),
+            isNotificationListenerGranted = isNotificationListenerGranted,
+            snackbarHostState = snackbarHostState
+        )
+        MuxDestination.NOTIFICATIONS_FAST -> FastNotificationScreen(
+            viewModel = viewModel(factory = FastNotificationViewModel.Factory()),
             isNotificationListenerGranted = isNotificationListenerGranted,
             snackbarHostState = snackbarHostState
         )
