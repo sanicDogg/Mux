@@ -4,7 +4,7 @@ import com.example.mux.data.model.ForwardingStatus
 import com.example.mux.data.model.NotificationPayload
 import com.example.mux.data.repository.InMemoryNotificationLogRepository
 import com.example.mux.data.repository.NotificationLogEntry
-import com.example.mux.ui.notifications.NotificationStatusFilter
+import com.example.mux.ui.notifications.fast.NotificationStatusFilter
 import com.example.mux.ui.notifications.fast.FastNotificationAction
 import com.example.mux.ui.notifications.fast.FastNotificationViewModel
 import kotlinx.coroutines.Dispatchers
@@ -28,7 +28,7 @@ import org.junit.Test
 
 /**
  * JVM tests for [FastNotificationViewModel]. Reuses the [FakeSettingsRepository] and
- * [FakeDataForwarder] declared in this package (see [NotificationLogViewModelTest]).
+ * [FakeDataForwarder] declared in this package.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class FastNotificationViewModelTest {
