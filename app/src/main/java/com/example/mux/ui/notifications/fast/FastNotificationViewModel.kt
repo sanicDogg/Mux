@@ -189,8 +189,8 @@ class FastNotificationViewModel(
 
             when (statusFilter) {
                 NotificationStatusFilter.ALL -> Unit
-                NotificationStatusFilter.SUCCESS -> if (!entry.status.isSuccess) continue
-                NotificationStatusFilter.FAILED -> if (entry.status.isSuccess) continue
+                NotificationStatusFilter.SUCCESS -> if (!entry.status.isSuccess || entry.status.isPending) continue
+                NotificationStatusFilter.FAILED -> if (entry.status.isSuccess || entry.status.isPending) continue
             }
 
             result.add(entry)

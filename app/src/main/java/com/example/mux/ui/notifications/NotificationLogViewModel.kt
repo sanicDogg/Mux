@@ -74,8 +74,8 @@ class NotificationLogViewModel(
 
                 val matchesStatus = when (statusFilter) {
                     NotificationStatusFilter.ALL -> true
-                    NotificationStatusFilter.SUCCESS -> entry.status.isSuccess
-                    NotificationStatusFilter.FAILED -> !entry.status.isSuccess
+                    NotificationStatusFilter.SUCCESS -> entry.status.isSuccess && !entry.status.isPending
+                    NotificationStatusFilter.FAILED -> !entry.status.isSuccess && !entry.status.isPending
                 }
 
                 matchesQuery && matchesStatus

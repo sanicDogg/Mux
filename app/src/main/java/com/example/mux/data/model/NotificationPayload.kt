@@ -114,7 +114,13 @@ data class CallLogPayload(
 @Serializable
 data class ForwardingStatus(
     val isSuccess: Boolean,
+    val isPending: Boolean = false,
     val statusCode: Int? = null,
     val errorMessage: String? = null,
     val timestamp: Long = System.currentTimeMillis()
-)
+) {
+    companion object {
+        /** A status representing a notification that is shown but not yet forwarded. */
+        fun pending(): ForwardingStatus = ForwardingStatus(isSuccess = false, isPending = true)
+    }
+}

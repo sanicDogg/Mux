@@ -74,15 +74,19 @@ class AppNotificationListenerService : NotificationListenerService() {
         if (pkgName == packageName) return
 
         serviceScope.launch {
+            var payload: NotificationPayload? = null
             try {
                 if (!settingsRepository.isNotificationForwardingEnabled()) {
                     Log.d(TAG, "Notification forwarding is disabled in settings. Skipping $pkgName")
                     return@launch
                 }
 
-                val payload = extractNotificationPayload(sbn)
+                payload = extractNotificationPayload(sbn)
                 _lastCapturedNotification.value = payload
                 notificationCollector.emitData(payload)
+
+                // Show the row immediately, then resolve its forwarding status in the background.
+                logRepository.upsertLog(NotificationLogEntry(payload, ForwardingStatus.pending()))
 
                 val jsonPayload = Json.encodeToString(NotificationPayload.serializer(), payload)
                 Log.d(TAG, "Captured notification from $pkgName. Forwarding payload: $jsonPayload")
@@ -97,9 +101,16 @@ class AppNotificationListenerService : NotificationListenerService() {
                     ForwardingStatus(isSuccess = false, errorMessage = err)
                 }
 
-                logRepository.addLog(NotificationLogEntry(payload, status))
+                logRepository.updateStatus(payload.id, status)
             } catch (e: Exception) {
                 Log.e(TAG, "Error processing notification from $pkgName", e)
+                // Resolve any pending row so it never stays stuck in the loading state.
+                val id = payload?.id
+                if (id != null) {
+                    runCatching {
+                        logRepository.updateStatus(id, ForwardingStatus(isSuccess = false, errorMessage = e.message))
+                    }
+                }
             }
         }
     }
@@ -141,6 +152,10 @@ class AppNotificationListenerService : NotificationListenerService() {
 
         if (payloads.isEmpty()) return@withContext
 
+        // Show every active notification immediately, then resolve their shared status.
+        val pendingEntries = payloads.map { NotificationLogEntry(it, ForwardingStatus.pending()) }
+        pendingEntries.forEach { logRepository.upsertLog(it) }
+
         val jsonPayloadArray = Json.encodeToString(payloads)
         Log.d(TAG, "Captured active notifications. Forwarding array payload: $jsonPayloadArray")
 
@@ -154,8 +169,7 @@ class AppNotificationListenerService : NotificationListenerService() {
             ForwardingStatus(isSuccess = false, errorMessage = err)
         }
 
-        val entries = payloads.map { NotificationLogEntry(it, status) }
-        logRepository.addLogs(entries)
+        payloads.forEach { logRepository.updateStatus(it.id, status) }
     }
 
     private fun extractNotificationPayload(sbn: StatusBarNotification): NotificationPayload {

@@ -161,6 +161,30 @@ class FastNotificationViewModelTest {
     }
 
     @Test
+    fun testPendingEntriesAreFilteredSeparately() = runTest(testDispatcher) {
+        subscribeAll()
+
+        logRepository.addLog(NotificationLogEntry(payloadOf("pending"), ForwardingStatus.pending()))
+        logRepository.addLog(NotificationLogEntry(payloadOf("ok"), ForwardingStatus(isSuccess = true)))
+        logRepository.addLog(NotificationLogEntry(payloadOf("fail"), ForwardingStatus(isSuccess = false, errorMessage = "Timeout")))
+
+        // ALL shows everything including the pending row
+        assertEquals(3, viewModel.logList.value.size)
+
+        // SUCCESS excludes pending and failed
+        viewModel.onAction(FastNotificationAction.FilterStatus(NotificationStatusFilter.SUCCESS))
+        var list = viewModel.logList.value
+        assertEquals(1, list.size)
+        assertEquals("ok", list[0].payload.id)
+
+        // FAILED excludes pending and success
+        viewModel.onAction(FastNotificationAction.FilterStatus(NotificationStatusFilter.FAILED))
+        list = viewModel.logList.value
+        assertEquals(1, list.size)
+        assertEquals("fail", list[0].payload.id)
+    }
+
+    @Test
     fun testDeduplicationLatestWins() = runTest(testDispatcher) {
         subscribeAll()
 

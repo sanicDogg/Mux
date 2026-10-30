@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Error
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Button
@@ -73,6 +74,7 @@ import java.util.Locale
 
 private const val TYPE_SUCCESS = "success"
 private const val TYPE_FAILED = "failed"
+private const val TYPE_PENDING = "pending"
 
 private val SuccessGreen = Color(0xFF4CAF50)
 private val FailedRed = Color(0xFFF44336)
@@ -84,6 +86,12 @@ private val DisconnectedAmber = Color(0xFFFFB74D)
  */
 private val timeFormat = ThreadLocal.withInitial {
     SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+}
+
+private fun entryContentType(entry: NotificationLogEntry): String = when {
+    entry.status.isPending -> TYPE_PENDING
+    entry.status.isSuccess -> TYPE_SUCCESS
+    else -> TYPE_FAILED
 }
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
@@ -173,6 +181,7 @@ private fun FastNotificationListPane(
     ) {
         FastStatusHeader(header = header, onAction = onAction)
 
+        // Search bar
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { onAction(FastNotificationAction.Search(it)) },
@@ -187,6 +196,7 @@ private fun FastNotificationListPane(
             singleLine = true
         )
 
+        // Status Filter Chips
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -211,6 +221,7 @@ private fun FastNotificationListPane(
             )
         }
 
+        // Notification List
         if (logList.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -234,7 +245,7 @@ private fun FastNotificationListPane(
                 items(
                     items = logList,
                     key = { it.payload.id },
-                    contentType = { if (it.status.isSuccess) TYPE_SUCCESS else TYPE_FAILED }
+                    contentType = { entryContentType(it) }
                 ) { entry ->
                     FastNotificationRow(
                         entry = entry,
@@ -313,6 +324,7 @@ private fun FastNotificationRow(
     modifier: Modifier = Modifier
 ) {
     val payload = entry.payload
+    val isPending = entry.status.isPending
     val isSuccess = entry.status.isSuccess
     val formattedTime = remember(payload.postTime) {
         timeFormat.get()!!.format(Date(payload.postTime))
@@ -322,6 +334,17 @@ private fun FastNotificationRow(
         if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
     val titleColor =
         if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+
+    val statusIcon = when {
+        isPending -> Icons.Rounded.Schedule
+        isSuccess -> Icons.Rounded.CheckCircle
+        else -> Icons.Rounded.Error
+    }
+    val statusTint = when {
+        isPending -> MaterialTheme.colorScheme.onSurfaceVariant
+        isSuccess -> SuccessGreen
+        else -> FailedRed
+    }
 
     Row(
         modifier = modifier
@@ -335,10 +358,10 @@ private fun FastNotificationRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = if (isSuccess) Icons.Rounded.CheckCircle else Icons.Rounded.Error,
+            imageVector = statusIcon,
             contentDescription = null,
-            tint = if (isSuccess) SuccessGreen else FailedRed,
-            modifier = Modifier.size(20.dp)
+            tint = statusTint,
+            modifier = Modifier.size(24.dp)
         )
 
         Spacer(modifier = Modifier.width(12.dp))
@@ -508,7 +531,9 @@ private fun FastNotificationInspectorPane(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(
-                            if (entry.status.isSuccess) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
+                            if (entry.status.isPending) Color(0xFFFFF8E1)
+                            else if (entry.status.isSuccess) Color(0xFFE8F5E9)
+                            else Color(0xFFFFEBEE),
                             RoundedCornerShape(8.dp)
                         )
                         .padding(16.dp),
@@ -516,18 +541,34 @@ private fun FastNotificationInspectorPane(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = if (entry.status.isSuccess) Icons.Rounded.CheckCircle else Icons.Rounded.Error,
+                            imageVector = when {
+                                entry.status.isPending -> Icons.Rounded.Schedule
+                                entry.status.isSuccess -> Icons.Rounded.CheckCircle
+                                else -> Icons.Rounded.Error
+                            },
                             contentDescription = null,
-                            tint = if (entry.status.isSuccess) SuccessGreen else FailedRed
+                            tint = when {
+                                entry.status.isPending -> Color(0xFFF9A825)
+                                entry.status.isSuccess -> SuccessGreen
+                                else -> FailedRed
+                            }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = stringResource(
-                                if (entry.status.isSuccess) R.string.forwarding_status_success else R.string.forwarding_status_failed
+                                when {
+                                    entry.status.isPending -> R.string.forwarding_status_pending
+                                    entry.status.isSuccess -> R.string.forwarding_status_success
+                                    else -> R.string.forwarding_status_failed
+                                }
                             ),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = if (entry.status.isSuccess) Color(0xFF2E7D32) else Color(0xFFC62828)
+                            color = when {
+                                entry.status.isPending -> Color(0xFFF57F17)
+                                entry.status.isSuccess -> Color(0xFF2E7D32)
+                                else -> Color(0xFFC62828)
+                            }
                         )
                     }
 
