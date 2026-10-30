@@ -31,6 +31,7 @@
     <string name="bigtext_format">BigText: %1$s</string>
     <string name="forwarding_status_success">Forwarding Status: Success</string>
     <string name="forwarding_status_failed">Forwarding Status: Failed</string>
+    <string name="forwarding_status_pending">Forwarding Status: Pending…</string>
     <string name="error_format">Error: %1$s</string>
     <string name="forwarding_payload">Forwarding Payload…</string>
     <string name="resend_payload">Resend / Forward Payload</string>
