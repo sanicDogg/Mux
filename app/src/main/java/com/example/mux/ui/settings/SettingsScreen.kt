@@ -48,16 +48,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.mux.R
 import com.example.mux.ui.components.PermissionBanner
 import com.example.mux.ui.theme.MuxTheme
 
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
+    onOpenDeviceState: () -> Unit,
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState? = null
 ) {
@@ -94,6 +97,7 @@ fun SettingsScreen(
         onRemovePackageRule = { viewModel.removePackageRule(it) },
         onToggleSmsForwarding = { viewModel.toggleSmsForwarding(it) },
         onToggleCallLogForwarding = { viewModel.toggleCallLogForwarding(it) },
+        onOpenDeviceState = onOpenDeviceState,
         modifier = modifier
     )
 }
@@ -113,6 +117,7 @@ fun SettingsContent(
     onRemovePackageRule: (String) -> Unit,
     onToggleSmsForwarding: (Boolean) -> Unit,
     onToggleCallLogForwarding: (Boolean) -> Unit,
+    onOpenDeviceState: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var serverUrlInput by remember(state.serverUrl) { mutableStateOf(state.serverUrl) }
@@ -227,21 +232,30 @@ fun SettingsContent(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = Icons.Rounded.Settings, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Device State Channel",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        Icon(imageVector = Icons.Rounded.Settings, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.device_state_channel_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    OutlinedButton(onClick = onOpenDeviceState) {
+                        Text(stringResource(R.string.device_state_open_screen))
+                    }
                 }
 
                 OutlinedTextField(
                     value = deviceStateUrlInput,
                     onValueChange = { deviceStateUrlInput = it },
-                    label = { Text("Device State Endpoint URL") },
-                    placeholder = { Text("http://192.168.1.100:8080/api/device-state") },
+                    label = { Text(stringResource(R.string.device_state_endpoint_label)) },
+                    placeholder = { Text(stringResource(R.string.device_state_endpoint_placeholder)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -251,7 +265,7 @@ fun SettingsContent(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "Forward device state", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    Text(text = stringResource(R.string.device_state_forward_toggle), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                     Switch(
                         checked = state.isDeviceStateForwardingEnabled,
                         onCheckedChange = onToggleDeviceStateForwarding
@@ -264,9 +278,9 @@ fun SettingsContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(text = "Clipboard capture", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        Text(text = stringResource(R.string.device_state_clipboard_toggle), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                         Text(
-                            text = "Requires opt-in; Android may return empty text when this app is not in the foreground.",
+                            text = stringResource(R.string.device_state_clipboard_description),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -282,9 +296,9 @@ fun SettingsContent(
                     horizontalArrangement = Arrangement.End
                 ) {
                     Button(onClick = { onSaveDeviceStateUrl(deviceStateUrlInput) }) {
-                        Icon(imageVector = Icons.Rounded.Save, contentDescription = "Save Device State URL")
+                        Icon(imageVector = Icons.Rounded.Save, contentDescription = stringResource(R.string.device_state_save_endpoint_desc))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Save Endpoint")
+                        Text(stringResource(R.string.device_state_save_endpoint))
                     }
                 }
             }
@@ -493,7 +507,8 @@ fun SettingsScreenPreview() {
             onAddPackageRule = {},
             onRemovePackageRule = {},
             onToggleSmsForwarding = {},
-            onToggleCallLogForwarding = {}
+            onToggleCallLogForwarding = {},
+            onOpenDeviceState = {}
         )
     }
 }

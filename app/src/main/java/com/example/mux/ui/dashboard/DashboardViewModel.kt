@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.mux.MuxApplication
-import com.example.mux.data.model.DeviceStatePayload
 import com.example.mux.process.manager.NativeProcessManager
 import com.example.mux.process.model.LogSource
 import com.example.mux.process.model.ProcessLogEntry
@@ -14,7 +13,6 @@ import com.example.mux.process.nginx.NginxProcessController
 import com.example.mux.process.repository.ProcessLogRepository
 import com.example.mux.process.tuna.TunaConfig
 import com.example.mux.process.tuna.TunaProcessController
-import com.example.mux.service.DeviceStateTracker
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -29,12 +27,10 @@ enum class LogTagFilter { ALL, NGINX, TUNA }
 data class DashboardUiState(
     val nginxStatus: ProcessStatus = ProcessStatus(tag = ProcessTag.NGINX, isRunning = false),
     val tunaStatus: ProcessStatus = ProcessStatus(tag = ProcessTag.TUNA, isRunning = false),
-    val deviceState: DeviceStatePayload? = null,
-    val isSendingDeviceState: Boolean = false,
     val sourceFilter: LogSourceFilter = LogSourceFilter.ALL,
     val tagFilter: LogTagFilter = LogTagFilter.ALL,
     val isAutoScrollEnabled: Boolean = true,
-    val statusMessage: String? = null
+    val statusMessage: String? = null,
 )
 
 class DashboardViewModel(
@@ -42,63 +38,41 @@ class DashboardViewModel(
     private val nginxProcessController: NginxProcessController,
     private val tunaProcessController: TunaProcessController,
     private val processLogRepository: ProcessLogRepository,
-    private val deviceStateTracker: DeviceStateTracker? = null
 ) : ViewModel() {
 
     private val _sourceFilter = MutableStateFlow(LogSourceFilter.ALL)
     private val _tagFilter = MutableStateFlow(LogTagFilter.ALL)
     private val _isAutoScrollEnabled = MutableStateFlow(true)
     private val _statusMessage = MutableStateFlow<String?>(null)
-    private val _isSendingDeviceState = MutableStateFlow(false)
-
-    private data class DeviceStateSection(
-        val payload: DeviceStatePayload?,
-        val isSending: Boolean,
-        val statusMessage: String?,
-    )
-
-    private val deviceStateSection: StateFlow<DeviceStateSection> = combine(
-        deviceStateTracker?.lastCaptured ?: MutableStateFlow(null),
-        _isSendingDeviceState,
-        _statusMessage
-    ) { payload, isSending, statusMessage ->
-        DeviceStateSection(payload, isSending, statusMessage)
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = DeviceStateSection(null, false, null)
-    )
 
     val uiState: StateFlow<DashboardUiState> = combine(
         nativeProcessManager.processStatuses,
-        deviceStateSection,
         _sourceFilter,
         _tagFilter,
-        _isAutoScrollEnabled
-    ) { statuses, deviceSection, sourceFilter, tagFilter, isAutoScroll ->
+        _isAutoScrollEnabled,
+        _statusMessage,
+    ) { statuses, sourceFilter, tagFilter, isAutoScroll, statusMessage ->
         val nginxStatus = statuses[ProcessTag.NGINX] ?: ProcessStatus(tag = ProcessTag.NGINX, isRunning = false)
         val tunaStatus = statuses[ProcessTag.TUNA] ?: ProcessStatus(tag = ProcessTag.TUNA, isRunning = false)
 
         DashboardUiState(
             nginxStatus = nginxStatus,
             tunaStatus = tunaStatus,
-            deviceState = deviceSection.payload,
-            isSendingDeviceState = deviceSection.isSending,
             sourceFilter = sourceFilter,
             tagFilter = tagFilter,
             isAutoScrollEnabled = isAutoScroll,
-            statusMessage = deviceSection.statusMessage
+            statusMessage = statusMessage,
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = DashboardUiState()
+        initialValue = DashboardUiState(),
     )
 
     val filteredLogs: StateFlow<List<ProcessLogEntry>> = combine(
         processLogRepository.logs,
         _sourceFilter,
-        _tagFilter
+        _tagFilter,
     ) { logs, sourceFilter, tagFilter ->
         logs.filter { entry ->
             val matchSource = when (sourceFilter) {
@@ -116,7 +90,7 @@ class DashboardViewModel(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList()
+        initialValue = emptyList(),
     )
 
     fun startNginx() {
@@ -175,26 +149,6 @@ class DashboardViewModel(
         _isAutoScrollEnabled.update { !it }
     }
 
-    fun sendDeviceState() {
-        val tracker = deviceStateTracker ?: return
-        viewModelScope.launch {
-            _isSendingDeviceState.value = true
-            _statusMessage.value = null
-            val result = try {
-                tracker.captureAndSend()
-            } catch (e: Exception) {
-                Result.failure(e)
-            } finally {
-                _isSendingDeviceState.value = false
-            }
-            _statusMessage.value = if (result.isSuccess) {
-                "Device state sent."
-            } else {
-                "Device state send failed: ${result.exceptionOrNull()?.message ?: "Unknown error"}"
-            }
-        }
-    }
-
     fun clearLogs() {
         processLogRepository.clearLogs()
     }
@@ -217,7 +171,6 @@ class DashboardViewModel(
                 nginxProcessController = app.nginxProcessController,
                 tunaProcessController = app.tunaProcessController,
                 processLogRepository = app.processLogRepository,
-                deviceStateTracker = app.deviceStateTracker
             ) as T
         }
     }

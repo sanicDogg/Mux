@@ -11,6 +11,7 @@
     <string name="title_notifications">Notifications</string>
     <string name="title_notifications_fast">Notifications Fast</string>
     <string name="title_web_server">Web Server</string>
+    <string name="title_device_state">Device State</string>
     <string name="title_settings">Settings</string>
     <string name="search_placeholder">Search by App, Title, Package, or ID…</string>
     <string name="listener_active">Listener Active</string>
@@ -46,7 +47,6 @@
     <string name="device_state_battery">Battery: %1$d%%</string>
     <string name="device_state_wifi">Wi-Fi: %1$s</string>
     <string name="device_state_cellular">Cellular: %1$s</string>
-    <string name="device_state_operator">Operator: %1$s</string>
     <string name="device_state_bluetooth">Bluetooth: %1$s</string>
     <string name="device_state_vpn">VPN: %1$s</string>
     <string name="device_state_media">Media playing: %1$s</string>
@@ -58,4 +58,17 @@
     <string name="device_state_on">On</string>
     <string name="device_state_off">Off</string>
     <string name="device_state_send_now">Send now</string>
+
+    <!-- Device state settings -->
+    <string name="device_state_channel_title">Device State Channel</string>
+    <string name="device_state_open_screen">Open screen</string>
+    <string name="device_state_endpoint_label">Device State Endpoint URL</string>
+    <string name="device_state_endpoint_placeholder">http://192.168.1.100:8080/api/device-state</string>
+    <string name="device_state_forward_toggle">Forward device state</string>
+    <string name="device_state_clipboard_toggle">Clipboard capture</string>
+    <string name="device_state_clipboard_description">Requires opt-in; Android may return empty text when this app is not in the foreground.</string>
+    <string name="device_state_save_endpoint">Save Endpoint</string>
+    <string name="device_state_save_endpoint_desc">Save Device State URL</string>
+    <string name="device_state_sent">Device state sent.</string>
+    <string name="device_state_send_failed">Device state send failed: %1$s</string>
 </resources>

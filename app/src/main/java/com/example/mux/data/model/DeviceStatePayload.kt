@@ -1,6 +1,5 @@
 package com.example.mux.data.model
 
-import androidx.compose.runtime.Immutable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -10,7 +9,6 @@ import kotlinx.serialization.Serializable
  * Serialized field names mirror the `deviceState` object consumed by the
  * frontend dashboard so the JSON is wire-compatible without any remapping.
  */
-@Immutable
 @Serializable
 data class DeviceStatePayload(
     @SerialName("batteryLevel")

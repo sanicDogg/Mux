@@ -43,6 +43,8 @@ import androidx.window.core.layout.WindowWidthSizeClass
 import com.example.mux.R
 import com.example.mux.ui.dashboard.DashboardScreen
 import com.example.mux.ui.dashboard.DashboardViewModel
+import com.example.mux.ui.devicestate.DeviceStateScreen
+import com.example.mux.ui.devicestate.DeviceStateViewModel
 import com.example.mux.ui.notifications.fast.FastNotificationScreen
 import com.example.mux.ui.notifications.fast.FastNotificationViewModel
 import com.example.mux.ui.settings.SettingsScreen
@@ -105,6 +107,7 @@ fun MainScreen(
                 snackbarHostState = snackbarHostState,
                 isNotificationListenerGranted = isNotificationListenerGranted,
                 onOpenMenu = onOpenMenu,
+                onNavigate = { dest -> onAction(MainAction.Navigate(dest)) },
                 modifier = if (isCompact) Modifier else Modifier.weight(1f)
             )
         }
@@ -119,6 +122,7 @@ private fun AppScaffold(
     snackbarHostState: SnackbarHostState,
     isNotificationListenerGranted: Boolean,
     onOpenMenu: () -> Unit,
+    onNavigate: (MuxDestination) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val currentTitle = stringResource(destination.titleRes)
@@ -157,7 +161,8 @@ private fun AppScaffold(
             MuxScreenContent(
                 destination = dest,
                 isNotificationListenerGranted = isNotificationListenerGranted,
-                snackbarHostState = snackbarHostState
+                snackbarHostState = snackbarHostState,
+                onNavigate = onNavigate
             )
         }
     }
@@ -167,7 +172,8 @@ private fun AppScaffold(
 private fun MuxScreenContent(
     destination: MuxDestination,
     isNotificationListenerGranted: Boolean,
-    snackbarHostState: SnackbarHostState
+    snackbarHostState: SnackbarHostState,
+    onNavigate: (MuxDestination) -> Unit,
 ) {
     when (destination) {
         MuxDestination.DASHBOARD -> DashboardScreen(
@@ -183,8 +189,13 @@ private fun MuxScreenContent(
             viewModel = viewModel(factory = NginxConfigViewModel.Factory()),
             snackbarHostState = snackbarHostState
         )
+        MuxDestination.DEVICE_STATE -> DeviceStateScreen(
+            viewModel = viewModel(factory = DeviceStateViewModel.Factory()),
+            snackbarHostState = snackbarHostState
+        )
         MuxDestination.SETTINGS -> SettingsScreen(
             viewModel = viewModel(factory = SettingsViewModel.Factory()),
+            onOpenDeviceState = { onNavigate(MuxDestination.DEVICE_STATE) },
             snackbarHostState = snackbarHostState
         )
     }

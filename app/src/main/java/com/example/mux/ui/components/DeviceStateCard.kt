@@ -27,7 +27,7 @@ import com.example.mux.data.model.DeviceStatePayload
 
 /**
  * A compact readout of the latest [DeviceStatePayload] plus a manual
- * "Send now" trigger. Used on the Dashboard.
+ * "Send now" trigger. Used on the Device State screen.
  */
 @Composable
 fun DeviceStateCard(

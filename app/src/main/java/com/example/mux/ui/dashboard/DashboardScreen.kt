@@ -23,10 +23,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.mux.process.model.LogSource
 import com.example.mux.process.model.ProcessLogEntry
 import com.example.mux.process.model.ProcessStatus
-import com.example.mux.data.model.DeviceStatePayload
 import com.example.mux.process.model.ProcessTag
 import com.example.mux.process.tuna.TunaConfig
-import com.example.mux.ui.components.DeviceStateCard
 import com.example.mux.ui.components.ProcessStatusCard
 import com.example.mux.ui.theme.MuxTheme
 
@@ -52,8 +50,7 @@ fun DashboardScreen(
     val onStopNginx = remember { { viewModel.stopNginx() } }
     val onStartTuna = remember { { viewModel.startTuna(TunaConfig()) } }
     val onStopTuna = remember { { viewModel.stopTuna() } }
-    val onSendDeviceState = remember { { viewModel.sendDeviceState() } }
-    
+
     val onSourceFilterSelected = remember { { filter: LogSourceFilter -> viewModel.setSourceFilter(filter) } }
     val onTagFilterSelected = remember { { filter: LogTagFilter -> viewModel.setTagFilter(filter) } }
     val onToggleAutoScroll = remember { { viewModel.toggleAutoScroll() } }
@@ -68,8 +65,6 @@ fun DashboardScreen(
     DashboardContent(
         nginxStatus = state.nginxStatus,
         tunaStatus = state.tunaStatus,
-        deviceState = state.deviceState,
-        isSendingDeviceState = state.isSendingDeviceState,
         logs = logs,
         sourceFilter = state.sourceFilter,
         tagFilter = state.tagFilter,
@@ -78,7 +73,6 @@ fun DashboardScreen(
         onStopNginx = onStopNginx,
         onStartTuna = onStartTuna,
         onStopTuna = onStopTuna,
-        onSendDeviceState = onSendDeviceState,
         onSourceFilterSelected = onSourceFilterSelected,
         onTagFilterSelected = onTagFilterSelected,
         onToggleAutoScroll = onToggleAutoScroll,
@@ -92,8 +86,6 @@ fun DashboardScreen(
 fun DashboardContent(
     nginxStatus: ProcessStatus,
     tunaStatus: ProcessStatus,
-    deviceState: DeviceStatePayload?,
-    isSendingDeviceState: Boolean,
     logs: List<ProcessLogEntry>,
     sourceFilter: LogSourceFilter,
     tagFilter: LogTagFilter,
@@ -102,7 +94,6 @@ fun DashboardContent(
     onStopNginx: () -> Unit,
     onStartTuna: () -> Unit,
     onStopTuna: () -> Unit,
-    onSendDeviceState: () -> Unit,
     onSourceFilterSelected: (LogSourceFilter) -> Unit,
     onTagFilterSelected: (LogTagFilter) -> Unit,
     onToggleAutoScroll: () -> Unit,
@@ -140,13 +131,6 @@ fun DashboardContent(
             )
         }
 
-        // Device state readout + manual capture
-        DeviceStateCard(
-            deviceState = deviceState,
-            isSending = isSendingDeviceState,
-            onSendNow = onSendDeviceState
-        )
-
         // Live Terminal Console Section
         ConsoleLogCard(
             logs = logs,
@@ -172,8 +156,6 @@ fun DashboardScreenPreview() {
         DashboardContent(
             nginxStatus = ProcessStatus(tag = ProcessTag.NGINX, isRunning = true, pid = 4321),
             tunaStatus = ProcessStatus(tag = ProcessTag.TUNA, isRunning = false),
-            deviceState = null,
-            isSendingDeviceState = false,
             logs = listOf(
                 ProcessLogEntry(processTag = ProcessTag.NGINX, source = LogSource.STDOUT, message = "[SYSTEM] Started process NGINX (PID: 4321)"),
                 ProcessLogEntry(processTag = ProcessTag.NGINX, source = LogSource.STDOUT, message = "2026/08/27 10:00:00 [info] 4321#0: nginx/1.24.0 started"),
@@ -186,7 +168,6 @@ fun DashboardScreenPreview() {
             onStartTuna = {},
             onStopNginx = {},
             onStopTuna = {},
-            onSendDeviceState = {},
             onSourceFilterSelected = {},
             onTagFilterSelected = {},
             onToggleAutoScroll = {},
