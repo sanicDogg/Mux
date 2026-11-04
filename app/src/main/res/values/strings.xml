@@ -40,4 +40,22 @@
     <string name="filter_all">All</string>
     <string name="filter_success">Success</string>
     <string name="filter_failed">Failed</string>
+
+    <!-- Device state indicator -->
+    <string name="device_state_title">Device State</string>
+    <string name="device_state_battery">Battery: %1$d%%</string>
+    <string name="device_state_wifi">Wi-Fi: %1$s</string>
+    <string name="device_state_cellular">Cellular: %1$s</string>
+    <string name="device_state_operator">Operator: %1$s</string>
+    <string name="device_state_bluetooth">Bluetooth: %1$s</string>
+    <string name="device_state_vpn">VPN: %1$s</string>
+    <string name="device_state_media">Media playing: %1$s</string>
+    <string name="device_state_headphones">Headphones: %1$s</string>
+    <string name="device_state_volume">Volume: %1$d%%</string>
+    <string name="device_state_airplane">Airplane mode: %1$s</string>
+    <string name="device_state_signal">Signal: %1$s</string>
+    <string name="device_state_unknown">Not yet captured</string>
+    <string name="device_state_on">On</string>
+    <string name="device_state_off">Off</string>
+    <string name="device_state_send_now">Send now</string>
 </resources>

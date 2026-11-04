@@ -9,6 +9,7 @@ import android.util.Log
 import com.example.mux.data.collector.NotificationDataCollector
 import com.example.mux.data.forwarder.DataForwarder
 import com.example.mux.data.forwarder.KtorDataForwarder
+import com.example.mux.MuxApplication
 import com.example.mux.data.model.ForwardingStatus
 import com.example.mux.data.model.NotificationPayload
 import com.example.mux.data.repository.InMemoryNotificationLogRepository
@@ -44,16 +45,14 @@ class AppNotificationListenerService : NotificationListenerService() {
     private lateinit var dataForwarder: DataForwarder
     val notificationCollector = NotificationDataCollector()
 
-    private val deviceStateEngine by lazy {
-        DeviceStateEngine(applicationContext, settingsRepository, dataForwarder, serviceScope)
-    }
+    private val deviceStateTracker: DeviceStateTracker
+        get() = MuxApplication.instance.deviceStateTracker
 
     override fun onCreate() {
         super.onCreate()
         settingsRepository = SettingsRepositoryImpl(applicationContext)
         dataForwarder = KtorDataForwarder(settingsRepository)
         notificationCollector.startCollecting()
-        deviceStateEngine.start()
         Log.d(TAG, "AppNotificationListenerService created")
     }
 
@@ -122,7 +121,6 @@ class AppNotificationListenerService : NotificationListenerService() {
 
     override fun onDestroy() {
         super.onDestroy()
-        deviceStateEngine.stop()
         notificationCollector.stopCollecting()
         _isServiceConnected.value = false
         instance = null
@@ -175,7 +173,7 @@ class AppNotificationListenerService : NotificationListenerService() {
     }
 
     /** Captures the current device state and forwards it to the device-state channel. */
-    suspend fun captureAndSendDeviceState(): Result<Unit> = deviceStateEngine.captureAndSend()
+    suspend fun captureAndSendDeviceState(): Result<Unit> = deviceStateTracker.captureAndSend()
 
     private fun extractNotificationPayload(sbn: StatusBarNotification): NotificationPayload {
         val notification = sbn.notification

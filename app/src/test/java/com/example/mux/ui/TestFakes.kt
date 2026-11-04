@@ -1,9 +1,12 @@
 package com.example.mux.ui
 
 import com.example.mux.data.forwarder.DataForwarder
+import com.example.mux.data.model.DeviceStatePayload
 import com.example.mux.data.repository.SettingsRepository
+import com.example.mux.service.DeviceStateTracker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Shared in-memory test doubles for [SettingsRepository] and [DataForwarder].
@@ -36,6 +39,23 @@ class FakeSettingsRepository : SettingsRepository {
     override suspend fun setDeviceStateUrl(url: String) { _deviceStateUrl.value = url }
     override suspend fun setDeviceStateForwardingEnabled(enabled: Boolean) { _deviceStateEnabled.value = enabled }
     override suspend fun setClipboardCaptureEnabled(enabled: Boolean) { _clipboardEnabled.value = enabled }
+}
+
+class FakeDeviceStateTracker : DeviceStateTracker {
+    var shouldSucceed: Boolean = true
+    var captureCallCount: Int = 0
+    private val _lastCaptured = MutableStateFlow<DeviceStatePayload?>(null)
+
+    override val lastCaptured: StateFlow<DeviceStatePayload?> = _lastCaptured
+
+    fun emit(state: DeviceStatePayload) {
+        _lastCaptured.value = state
+    }
+
+    override suspend fun captureAndSend(): Result<Unit> {
+        captureCallCount++
+        return if (shouldSucceed) Result.success(Unit) else Result.failure(Exception("Capture failed"))
+    }
 }
 
 class FakeDataForwarder : DataForwarder {

@@ -8,6 +8,7 @@ import com.example.mux.process.nginx.NginxConfigManager
 import com.example.mux.process.nginx.NginxProcessController
 import com.example.mux.process.repository.DefaultProcessLogRepository
 import com.example.mux.process.tuna.TunaProcessController
+import com.example.mux.service.DeviceStateTracker
 import com.example.mux.ui.dashboard.DashboardViewModel
 import com.example.mux.ui.dashboard.LogSourceFilter
 import com.example.mux.ui.dashboard.LogTagFilter
@@ -39,6 +40,7 @@ class DashboardViewModelTest {
     private lateinit var nativeProcessManager: NativeProcessManager
     private lateinit var nginxProcessController: NginxProcessController
     private lateinit var tunaProcessController: TunaProcessController
+    private lateinit var deviceStateTracker: DeviceStateTracker
     private lateinit var viewModel: DashboardViewModel
 
     @Before
@@ -52,12 +54,14 @@ class DashboardViewModelTest {
 
         nginxProcessController = NginxProcessController(nativeProcessManager, binaryManager, nginxConfigManager)
         tunaProcessController = TunaProcessController(nativeProcessManager, binaryManager, processLogRepository)
+        deviceStateTracker = FakeDeviceStateTracker()
 
         viewModel = DashboardViewModel(
             nativeProcessManager = nativeProcessManager,
             nginxProcessController = nginxProcessController,
             tunaProcessController = tunaProcessController,
-            processLogRepository = processLogRepository
+            processLogRepository = processLogRepository,
+            deviceStateTracker = deviceStateTracker
         )
     }
 
@@ -128,5 +132,31 @@ class DashboardViewModelTest {
         assertTrue(formattedText.contains("NGINX"))
         collectJob.cancel()
         logsCollectJob.cancel()
+    }
+
+    @Test
+    fun testSendDeviceStateUpdatesStatus() = runTest(testDispatcher) {
+        val collectJob = backgroundScope.launch { viewModel.uiState.collect() }
+
+        (deviceStateTracker as FakeDeviceStateTracker).shouldSucceed = true
+        viewModel.sendDeviceState()
+
+        assertEquals(1, (deviceStateTracker as FakeDeviceStateTracker).captureCallCount)
+        assertEquals("Device state sent.", viewModel.uiState.value.statusMessage)
+        assertFalse(viewModel.uiState.value.isSendingDeviceState)
+        collectJob.cancel()
+    }
+
+    @Test
+    fun testSendDeviceStateFailure() = runTest(testDispatcher) {
+        val collectJob = backgroundScope.launch { viewModel.uiState.collect() }
+
+        (deviceStateTracker as FakeDeviceStateTracker).shouldSucceed = false
+        viewModel.sendDeviceState()
+
+        assertEquals(1, (deviceStateTracker as FakeDeviceStateTracker).captureCallCount)
+        assertTrue(viewModel.uiState.value.statusMessage?.startsWith("Device state send failed:") == true)
+        assertFalse(viewModel.uiState.value.isSendingDeviceState)
+        collectJob.cancel()
     }
 }

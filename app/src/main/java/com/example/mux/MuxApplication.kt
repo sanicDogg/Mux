@@ -14,8 +14,17 @@ import com.example.mux.process.repository.DefaultProcessLogRepository
 import com.example.mux.process.repository.ProcessLogRepository
 import com.example.mux.process.tuna.TunaProcessController
 import com.example.mux.service.AppNotificationListenerService
+import com.example.mux.service.DeviceStateEngine
+import com.example.mux.service.DeviceStateTracker
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 
 class MuxApplication : Application() {
+
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val processLogRepository: ProcessLogRepository by lazy {
         DefaultProcessLogRepository()
@@ -53,9 +62,28 @@ class MuxApplication : Application() {
         KtorDataForwarder(settingsRepository)
     }
 
+    val deviceStateEngine: DeviceStateEngine by lazy {
+        DeviceStateEngine(
+            context = this,
+            settingsRepository = settingsRepository,
+            dataForwarder = dataForwarder,
+            scope = applicationScope,
+        )
+    }
+
+    val deviceStateTracker: DeviceStateTracker by lazy { deviceStateEngine }
+
     override fun onCreate() {
         super.onCreate()
         instance = this
+
+        applicationScope.launch {
+            settingsRepository.isDeviceStateForwardingEnabled
+                .distinctUntilChanged()
+                .collect { enabled ->
+                    if (enabled) deviceStateEngine.start() else deviceStateEngine.stop()
+                }
+        }
     }
 
     companion object {

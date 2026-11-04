@@ -11,6 +11,7 @@ import com.example.mux.data.model.DeviceStatePayload
 import com.example.mux.data.model.DeviceStateTrigger
 import com.example.mux.data.repository.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,30 +27,36 @@ import kotlinx.serialization.json.Json
  * - debounce/dedupe captured snapshots;
  * - serialize and forward them to the device-state channel.
  *
- * The service only calls [start]/[stop] and [captureAndSend], keeping
- * [AppNotificationListenerService] focused on notification interception.
+ * [start] and [stop] are idempotent and should be driven by the device-state
+ * forwarding setting so the event machinery only runs while the feature is on.
  */
 class DeviceStateEngine(
     private val context: Context,
     private val settingsRepository: SettingsRepository,
     private val dataForwarder: DataForwarder,
     private val scope: CoroutineScope,
-) {
+) : DeviceStateTracker {
 
     private val events = DeviceStateEvents()
     private var receiver: DeviceStateBroadcastReceiver? = null
     private var clipboardListener: ClipboardManager.OnPrimaryClipChangedListener? = null
+    private var forwardingJob: Job? = null
 
     private val provider = DeviceStateProvider(context, settingsRepository)
     val collector = DeviceStateCollector(provider, events, scope)
 
     @Volatile
     private var lastSignature: String? = null
+    @Volatile
+    private var isStarted: Boolean = false
 
     private val _lastCaptured = MutableStateFlow<DeviceStatePayload?>(null)
-    val lastCaptured: StateFlow<DeviceStatePayload?> = _lastCaptured.asStateFlow()
+    override val lastCaptured: StateFlow<DeviceStatePayload?> = _lastCaptured.asStateFlow()
 
     fun start() {
+        if (isStarted) return
+        isStarted = true
+
         collector.startCollecting()
 
         receiver = DeviceStateBroadcastReceiver(events).also { r ->
@@ -59,7 +66,7 @@ class DeviceStateEngine(
             context.registerReceiver(r, DeviceStateBroadcastReceiver.intentFilter())
         }
 
-        scope.launch {
+        forwardingJob = scope.launch {
             collector.dataStream.collect { payload -> forward(payload) }
         }
 
@@ -67,9 +74,14 @@ class DeviceStateEngine(
         clipboardListener = ClipboardManager.OnPrimaryClipChangedListener {
             events.publish(DeviceStateTrigger.CLIPBOARD)
         }.also { listener -> clipboard?.addPrimaryClipChangedListener(listener) }
+
+        Log.d(TAG, "Device state engine started")
     }
 
     fun stop() {
+        if (!isStarted) return
+        isStarted = false
+
         receiver?.let { runCatching { context.unregisterReceiver(it) } }
         receiver = null
 
@@ -79,16 +91,23 @@ class DeviceStateEngine(
         }
         clipboardListener = null
 
+        forwardingJob?.cancel()
+        forwardingJob = null
         collector.stopCollecting()
+
+        Log.d(TAG, "Device state engine stopped")
     }
 
     /**
      * Captures a snapshot on demand and forwards it to the device-state channel.
+     *
+     * @return [Result.failure] when device-state forwarding is disabled, so
+     * callers can distinguish "disabled" from a real network error.
      */
-    suspend fun captureAndSend(): Result<Unit> {
+    override suspend fun captureAndSend(): Result<Unit> {
         if (!settingsRepository.isDeviceStateForwardingEnabled()) {
             Log.d(TAG, "Device state forwarding is disabled. Skipping.")
-            return Result.success(Unit)
+            return Result.failure(IllegalStateException("Device-state forwarding is disabled"))
         }
         return forward(collector.captureAndEmit())
     }
