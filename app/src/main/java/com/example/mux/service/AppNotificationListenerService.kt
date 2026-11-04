@@ -44,11 +44,16 @@ class AppNotificationListenerService : NotificationListenerService() {
     private lateinit var dataForwarder: DataForwarder
     val notificationCollector = NotificationDataCollector()
 
+    private val deviceStateEngine by lazy {
+        DeviceStateEngine(applicationContext, settingsRepository, dataForwarder, serviceScope)
+    }
+
     override fun onCreate() {
         super.onCreate()
         settingsRepository = SettingsRepositoryImpl(applicationContext)
         dataForwarder = KtorDataForwarder(settingsRepository)
         notificationCollector.startCollecting()
+        deviceStateEngine.start()
         Log.d(TAG, "AppNotificationListenerService created")
     }
 
@@ -91,7 +96,7 @@ class AppNotificationListenerService : NotificationListenerService() {
                 val jsonPayload = Json.encodeToString(NotificationPayload.serializer(), payload)
                 Log.d(TAG, "Captured notification from $pkgName. Forwarding payload: $jsonPayload")
 
-                val result = dataForwarder.forwardData(jsonPayload)
+                val result = dataForwarder.forwardNotification(jsonPayload)
                 val status = if (result.isSuccess) {
                     Log.i(TAG, "Successfully forwarded notification payload for ${payload.id}")
                     ForwardingStatus(isSuccess = true)
@@ -115,12 +120,9 @@ class AppNotificationListenerService : NotificationListenerService() {
         }
     }
 
-    override fun onNotificationRemoved(sbn: StatusBarNotification?) {
-        super.onNotificationRemoved(sbn)
-    }
-
     override fun onDestroy() {
         super.onDestroy()
+        deviceStateEngine.stop()
         notificationCollector.stopCollecting()
         _isServiceConnected.value = false
         instance = null
@@ -159,7 +161,7 @@ class AppNotificationListenerService : NotificationListenerService() {
         val jsonPayloadArray = Json.encodeToString(payloads)
         Log.d(TAG, "Captured active notifications. Forwarding array payload: $jsonPayloadArray")
 
-        val result = dataForwarder.forwardData(jsonPayloadArray)
+        val result = dataForwarder.forwardNotification(jsonPayloadArray)
         val status = if (result.isSuccess) {
             Log.i(TAG, "Successfully forwarded array payload of ${payloads.size} active notifications")
             ForwardingStatus(isSuccess = true)
@@ -171,6 +173,9 @@ class AppNotificationListenerService : NotificationListenerService() {
 
         payloads.forEach { logRepository.updateStatus(it.id, status) }
     }
+
+    /** Captures the current device state and forwards it to the device-state channel. */
+    suspend fun captureAndSendDeviceState(): Result<Unit> = deviceStateEngine.captureAndSend()
 
     private fun extractNotificationPayload(sbn: StatusBarNotification): NotificationPayload {
         val notification = sbn.notification

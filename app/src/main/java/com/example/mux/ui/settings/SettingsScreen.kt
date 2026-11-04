@@ -86,6 +86,9 @@ fun SettingsScreen(
         onSaveServerUrl = { viewModel.setServerUrl(it) },
         onSaveApiKey = { viewModel.setApiKey(it) },
         onToggleNotificationForwarding = { viewModel.setNotificationForwardingEnabled(it) },
+        onSaveDeviceStateUrl = { viewModel.setDeviceStateUrl(it) },
+        onToggleDeviceStateForwarding = { viewModel.setDeviceStateForwardingEnabled(it) },
+        onToggleClipboardCapture = { viewModel.setClipboardCaptureEnabled(it) },
         onSetPackageRuleMode = { viewModel.setPackageRuleMode(it) },
         onAddPackageRule = { viewModel.addPackageRule(it) },
         onRemovePackageRule = { viewModel.removePackageRule(it) },
@@ -102,6 +105,9 @@ fun SettingsContent(
     onSaveServerUrl: (String) -> Unit,
     onSaveApiKey: (String) -> Unit,
     onToggleNotificationForwarding: (Boolean) -> Unit,
+    onSaveDeviceStateUrl: (String) -> Unit,
+    onToggleDeviceStateForwarding: (Boolean) -> Unit,
+    onToggleClipboardCapture: (Boolean) -> Unit,
     onSetPackageRuleMode: (Boolean) -> Unit,
     onAddPackageRule: (String) -> Unit,
     onRemovePackageRule: (String) -> Unit,
@@ -111,6 +117,7 @@ fun SettingsContent(
 ) {
     var serverUrlInput by remember(state.serverUrl) { mutableStateOf(state.serverUrl) }
     var apiKeyInput by remember(state.apiKey) { mutableStateOf(state.apiKey) }
+    var deviceStateUrlInput by remember(state.deviceStateUrl) { mutableStateOf(state.deviceStateUrl) }
     var newPackageInput by remember { mutableStateOf("") }
 
     Column(
@@ -204,6 +211,80 @@ fun SettingsContent(
                         Icon(imageVector = Icons.Rounded.Save, contentDescription = "Save Settings")
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("Save Server Config")
+                    }
+                }
+            }
+        }
+
+        // 2b. Device State Channel Configuration
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Rounded.Settings, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Device State Channel",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                OutlinedTextField(
+                    value = deviceStateUrlInput,
+                    onValueChange = { deviceStateUrlInput = it },
+                    label = { Text("Device State Endpoint URL") },
+                    placeholder = { Text("http://192.168.1.100:8080/api/device-state") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "Forward device state", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    Switch(
+                        checked = state.isDeviceStateForwardingEnabled,
+                        onCheckedChange = onToggleDeviceStateForwarding
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(text = "Clipboard capture", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = "Requires opt-in; Android may return empty text when this app is not in the foreground.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = state.isClipboardCaptureEnabled,
+                        onCheckedChange = onToggleClipboardCapture
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Button(onClick = { onSaveDeviceStateUrl(deviceStateUrlInput) }) {
+                        Icon(imageVector = Icons.Rounded.Save, contentDescription = "Save Device State URL")
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Save Endpoint")
                     }
                 }
             }
@@ -396,6 +477,8 @@ fun SettingsScreenPreview() {
                 serverUrl = "http://192.168.1.100:8080/api/notifications",
                 apiKey = "token_12345",
                 isNotificationForwardingEnabled = true,
+                deviceStateUrl = "http://192.168.1.100:8080/api/device-state",
+                isDeviceStateForwardingEnabled = true,
                 packageRules = listOf("com.whatsapp", "com.telegram"),
                 isNotificationListenerGranted = true
             ),
@@ -403,6 +486,9 @@ fun SettingsScreenPreview() {
             onSaveServerUrl = {},
             onSaveApiKey = {},
             onToggleNotificationForwarding = {},
+            onSaveDeviceStateUrl = {},
+            onToggleDeviceStateForwarding = {},
+            onToggleClipboardCapture = {},
             onSetPackageRuleMode = {},
             onAddPackageRule = {},
             onRemovePackageRule = {},

@@ -19,6 +19,9 @@ data class SettingsUiState(
     val serverUrl: String = "",
     val apiKey: String = "",
     val isNotificationForwardingEnabled: Boolean = true,
+    val deviceStateUrl: String = "",
+    val isDeviceStateForwardingEnabled: Boolean = true,
+    val isClipboardCaptureEnabled: Boolean = false,
     val packageRules: List<String> = emptyList(),
     val isBlacklistMode: Boolean = true,
     val isSmsForwardingEnabled: Boolean = false,
@@ -30,7 +33,10 @@ data class SettingsUiState(
 private data class RepoSettings(
     val serverUrl: String,
     val apiKey: String,
-    val isNotificationForwardingEnabled: Boolean
+    val isNotificationForwardingEnabled: Boolean,
+    val deviceStateUrl: String,
+    val isDeviceStateForwardingEnabled: Boolean,
+    val isClipboardCaptureEnabled: Boolean
 )
 
 private data class LocalRuleSettings(
@@ -56,11 +62,23 @@ class SettingsViewModel(
     private val _statusMessage = MutableStateFlow<String?>(null)
 
     private val repoSettingsFlow = combine(
-        settingsRepository.serverUrl,
-        settingsRepository.apiKey,
-        settingsRepository.isNotificationForwardingEnabled
-    ) { url, key, enabled ->
-        RepoSettings(url, key, enabled)
+        combine(
+            settingsRepository.serverUrl,
+            settingsRepository.apiKey,
+            settingsRepository.isNotificationForwardingEnabled
+        ) { url, key, enabled -> Triple(url, key, enabled) },
+        settingsRepository.deviceStateUrl,
+        settingsRepository.isDeviceStateForwardingEnabled,
+        settingsRepository.isClipboardCaptureEnabled
+    ) { base, deviceStateUrl, deviceStateEnabled, clipboardEnabled ->
+        RepoSettings(
+            serverUrl = base.first,
+            apiKey = base.second,
+            isNotificationForwardingEnabled = base.third,
+            deviceStateUrl = deviceStateUrl,
+            isDeviceStateForwardingEnabled = deviceStateEnabled,
+            isClipboardCaptureEnabled = clipboardEnabled
+        )
     }
 
     private val localSettingsFlow = combine(
@@ -89,6 +107,9 @@ class SettingsViewModel(
             serverUrl = repo.serverUrl,
             apiKey = repo.apiKey,
             isNotificationForwardingEnabled = repo.isNotificationForwardingEnabled,
+            deviceStateUrl = repo.deviceStateUrl,
+            isDeviceStateForwardingEnabled = repo.isDeviceStateForwardingEnabled,
+            isClipboardCaptureEnabled = repo.isClipboardCaptureEnabled,
             packageRules = local.packageRules,
             isBlacklistMode = local.isBlacklistMode,
             isSmsForwardingEnabled = local.isSmsForwardingEnabled,
@@ -126,6 +147,27 @@ class SettingsViewModel(
         viewModelScope.launch {
             settingsRepository.setNotificationForwardingEnabled(enabled)
             _statusMessage.value = if (enabled) "Notification forwarding enabled." else "Notification forwarding disabled."
+        }
+    }
+
+    fun setDeviceStateUrl(url: String) {
+        viewModelScope.launch {
+            settingsRepository.setDeviceStateUrl(url)
+            _statusMessage.value = "Device-state endpoint updated."
+        }
+    }
+
+    fun setDeviceStateForwardingEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setDeviceStateForwardingEnabled(enabled)
+            _statusMessage.value = if (enabled) "Device-state forwarding enabled." else "Device-state forwarding disabled."
+        }
+    }
+
+    fun setClipboardCaptureEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setClipboardCaptureEnabled(enabled)
+            _statusMessage.value = if (enabled) "Clipboard capture enabled." else "Clipboard capture disabled."
         }
     }
 

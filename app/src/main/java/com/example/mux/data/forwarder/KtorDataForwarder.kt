@@ -46,8 +46,13 @@ class KtorDataForwarder(
         }
     }
 
-    override suspend fun forwardData(payload: String): Result<Unit> {
+    override suspend fun forwardNotification(payload: String): Result<Unit> {
         val targetUrl = settingsRepository?.getServerUrl() ?: DEFAULT_FALLBACK_URL
+        return forwardDataToEndpoint(payload, targetUrl)
+    }
+
+    override suspend fun forwardDeviceState(payload: String): Result<Unit> {
+        val targetUrl = settingsRepository?.getDeviceStateUrl() ?: DEFAULT_DEVICE_STATE_URL
         return forwardDataToEndpoint(payload, targetUrl)
     }
 
@@ -98,5 +103,6 @@ class KtorDataForwarder(
 
     companion object {
         const val DEFAULT_FALLBACK_URL = "http://192.168.1.100:8080/api/notifications"
+        const val DEFAULT_DEVICE_STATE_URL = "http://192.168.1.100:8080/api/device-state"
     }
 }
