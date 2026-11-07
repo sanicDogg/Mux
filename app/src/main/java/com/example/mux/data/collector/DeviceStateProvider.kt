@@ -1,8 +1,13 @@
 package com.example.mux.data.collector
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.pm.PackageManager
+import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -10,6 +15,7 @@ import android.net.wifi.WifiManager
 import android.os.BatteryManager
 import android.os.Build
 import android.provider.Settings
+import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
 import com.example.mux.data.model.DeviceStatePayload
 import com.example.mux.data.repository.SettingsRepository
@@ -36,13 +42,15 @@ class DeviceStateProvider(
 
         return DeviceStatePayload(
             batteryLevel = readBatteryLevel(),
-            isWifiConnected = wifiName != null,
+            isWifiConnected = readWifiConnected(),
             wifiName = wifiName,
             isCellularConnected = readCellularConnected(),
             signalStrength = readSignalStrength(),
             cellularOperator = readCellularOperator(),
+            cellularOperators = readCellularOperators(),
             isAirplaneModeOn = readAirplaneMode(),
             isBluetoothOn = readBluetoothEnabled(),
+            bluetoothName = readConnectedBluetoothDeviceName(),
             isVpnActive = readVpnActive(),
             isMediaPlaying = readMediaActive(),
             isHeadphonesConnected = readHeadphonesConnected(),
@@ -73,6 +81,7 @@ class DeviceStateProvider(
 
     @Suppress("DEPRECATION")
     private fun readWifiName(): String? = try {
+        if (!isPermissionGranted(Manifest.permission.ACCESS_FINE_LOCATION)) return null
         val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
         wifiManager?.connectionInfo?.ssid
             ?.removeSurrounding("\"")
@@ -80,6 +89,16 @@ class DeviceStateProvider(
             ?.takeIf { it != WIFI_SSID_UNKNOWN }
     } catch (_: Exception) {
         null
+    }
+
+    private fun readWifiConnected(): Boolean = try {
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        connectivityManager?.activeNetwork?.let { network ->
+            connectivityManager.getNetworkCapabilities(network)
+                ?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+        } ?: false
+    } catch (_: Exception) {
+        false
     }
 
     private fun readCellularConnected(): Boolean = try {
@@ -116,11 +135,80 @@ class DeviceStateProvider(
         null
     }
 
+    @SuppressLint("MissingPermission")
+    private fun readCellularOperators(): List<String> = try {
+        if (!isPermissionGranted(Manifest.permission.READ_PHONE_STATE)) return emptyList()
+        val subscriptionManager =
+            context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as? SubscriptionManager
+        val telephonyManager =
+            context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+        if ((subscriptionManager == null) || (telephonyManager == null)) return emptyList()
+        subscriptionManager.activeSubscriptionInfoList
+            ?.asSequence()
+            ?.mapNotNull { info ->
+                telephonyManager.createForSubscriptionId(info.subscriptionId)
+                    .networkOperatorName
+                    ?.takeIf { it.isNotBlank() }
+            }
+            ?.distinct()
+            ?.toList()
+            ?: emptyList()
+    } catch (_: Exception) {
+        emptyList()
+    }
+
     private fun readBluetoothEnabled(): Boolean = try {
         val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
         bluetoothManager?.adapter?.isEnabled == true
     } catch (_: Exception) {
         false
+    }
+
+    /**
+     * Name of the Bluetooth device this phone is currently connected to, or an
+     * empty string when nothing is connected.
+     *
+     * Two sources are consulted because no single public API covers every
+     * profile: audio sinks catch headphones/speakers/car kits (the common case,
+     * and it needs no permission), while the GATT connection list catches BLE
+     * peripherals such as watches and trackers.
+     */
+    private fun readConnectedBluetoothDeviceName(): String = try {
+        readBluetoothAudioSinkName().ifEmpty { readBluetoothGattDeviceName() }
+    } catch (_: Exception) {
+        ""
+    }
+
+    /** Actively routed Bluetooth audio output (A2DP/SCO/LE Audio), if any. */
+    private fun readBluetoothAudioSinkName(): String = try {
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+            ?: return ""
+        audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+            .firstOrNull { device -> device.isSink && device.type in BLUETOOTH_AUDIO_TYPES }
+            ?.productName
+            ?.toString()
+            ?.takeIf { it.isNotBlank() }
+            ?: ""
+    } catch (_: Exception) {
+        ""
+    }
+
+    /** Connected BLE peripheral (watch, tracker, LE accessory), if any. */
+    @SuppressLint("MissingPermission")
+    private fun readBluetoothGattDeviceName(): String = try {
+        if ((Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) &&
+            !isPermissionGranted(Manifest.permission.BLUETOOTH_CONNECT)
+        ) {
+            return ""
+        }
+        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+            ?: return ""
+        if (bluetoothManager.adapter?.isEnabled != true) return ""
+        bluetoothManager.getConnectedDevices(BluetoothProfile.GATT)
+            ?.firstNotNullOfOrNull { device -> device.name?.takeIf { it.isNotBlank() } }
+            ?: ""
+    } catch (_: Exception) {
+        ""
     }
 
     @Suppress("DEPRECATION")
@@ -189,7 +277,20 @@ class DeviceStateProvider(
         return sdf.format(Date(timeMillis))
     }
 
+    private fun isPermissionGranted(permission: String): Boolean =
+        context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+
     private companion object {
+        /** Audio output routes that mean "a Bluetooth device is attached". */
+        val BLUETOOTH_AUDIO_TYPES: Set<Int> = buildSet {
+            add(AudioDeviceInfo.TYPE_BLUETOOTH_A2DP)
+            add(AudioDeviceInfo.TYPE_BLUETOOTH_SCO)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                add(AudioDeviceInfo.TYPE_BLE_HEADSET)
+                add(AudioDeviceInfo.TYPE_BLE_SPEAKER)
+            }
+        }
+
         // Android reports this literal when the real SSID is unavailable,
         // typically because location services are off (API 29+) or no permission.
         const val WIFI_SSID_UNKNOWN = "<unknown ssid>"

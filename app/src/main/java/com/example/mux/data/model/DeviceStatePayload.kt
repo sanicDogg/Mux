@@ -29,11 +29,21 @@ data class DeviceStatePayload(
     @SerialName("cellularOperator")
     val cellularOperator: String? = null,
 
+    @SerialName("cellularOperators")
+    val cellularOperators: List<String> = emptyList(),
+
     @SerialName("isAirplaneModeOn")
     val isAirplaneModeOn: Boolean = false,
 
     @SerialName("isBluetoothOn")
     val isBluetoothOn: Boolean = false,
+
+    /**
+     * Name of the Bluetooth device the phone is currently connected to.
+     * Empty string when nothing is connected (or when Bluetooth is off).
+     */
+    @SerialName("bluetoothName")
+    val bluetoothName: String = "",
 
     @SerialName("isVpnActive")
     val isVpnActive: Boolean = false,
@@ -83,7 +93,12 @@ data class DeviceStatePayload(
      * frontend cares about actually changed.
      */
     fun contentSignature(): String =
-        copy(timestamp = 0L, timestampIso = "", trigger = null).toString()
+        copy(
+            timestamp = 0L,
+            timestampIso = "",
+            trigger = null,
+            clipboardCapturedAt = null,
+        ).toString()
 
     companion object {
         const val TYPE = "DEVICE_STATE"

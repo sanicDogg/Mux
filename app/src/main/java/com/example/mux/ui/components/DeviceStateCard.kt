@@ -90,8 +90,17 @@ fun DeviceStateCard(
             InfoLine(stringResource(R.string.device_state_signal, deviceState.signalStrength))
             InfoLine(stringResource(R.string.device_state_airplane, if (deviceState.isAirplaneModeOn) yes else no))
             InfoLine(stringResource(R.string.device_state_wifi, if (deviceState.isWifiConnected) deviceState.wifiName ?: yes else no))
-            InfoLine(stringResource(R.string.device_state_cellular, if (deviceState.isCellularConnected) deviceState.cellularOperator ?: yes else no))
-            InfoLine(stringResource(R.string.device_state_bluetooth, if (deviceState.isBluetoothOn) yes else no))
+            val cellularLabel = deviceState.cellularOperators
+                .takeIf { it.isNotEmpty() }
+                ?.joinToString(", ")
+                ?: deviceState.cellularOperator
+            InfoLine(stringResource(R.string.device_state_cellular, if (deviceState.isCellularConnected) cellularLabel ?: yes else no))
+            val bluetoothLabel = when {
+                deviceState.bluetoothName.isNotBlank() -> deviceState.bluetoothName
+                deviceState.isBluetoothOn -> yes
+                else -> no
+            }
+            InfoLine(stringResource(R.string.device_state_bluetooth, bluetoothLabel))
             InfoLine(stringResource(R.string.device_state_vpn, if (deviceState.isVpnActive) yes else no))
             InfoLine(stringResource(R.string.device_state_headphones, if (deviceState.isHeadphonesConnected) yes else no))
             InfoLine(stringResource(R.string.device_state_media, if (deviceState.isMediaPlaying) yes else no))
