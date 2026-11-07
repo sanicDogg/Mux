@@ -23,6 +23,8 @@ class DeviceStateBroadcastReceiver(
         val trigger = when (intent.action) {
             Intent.ACTION_AIRPLANE_MODE_CHANGED -> DeviceStateTrigger.AIRPLANE_MODE
             // Intent.ACTION_BATTERY_CHANGED -> DeviceStateTrigger.BATTERY
+            Intent.ACTION_POWER_CONNECTED,
+            Intent.ACTION_POWER_DISCONNECTED -> DeviceStateTrigger.CHARGING
             Intent.ACTION_HEADSET_PLUG -> DeviceStateTrigger.HEADSET
             "android.media.VOLUME_CHANGED_ACTION",
             "android.media.RINGER_MODE_CHANGED" -> DeviceStateTrigger.VOLUME
@@ -42,6 +44,8 @@ class DeviceStateBroadcastReceiver(
         fun intentFilter(): IntentFilter = IntentFilter().apply {
             addAction(Intent.ACTION_AIRPLANE_MODE_CHANGED)
             // addAction(Intent.ACTION_BATTERY_CHANGED)
+            addAction(Intent.ACTION_POWER_CONNECTED)
+            addAction(Intent.ACTION_POWER_DISCONNECTED)
             addAction(Intent.ACTION_HEADSET_PLUG)
             addAction("android.media.VOLUME_CHANGED_ACTION")
             addAction("android.media.RINGER_MODE_CHANGED")

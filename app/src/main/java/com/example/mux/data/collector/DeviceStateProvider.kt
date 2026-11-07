@@ -7,6 +7,8 @@ import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
@@ -62,6 +64,7 @@ class DeviceStateProvider(
 
             DeviceStatePayload(
                 batteryLevel = readBatteryLevel(),
+                isCharging = readIsCharging(),
                 isWifiConnected = readWifiConnected(),
                 wifiName = wifiName,
                 isCellularConnected = readCellularConnected(),
@@ -90,6 +93,26 @@ class DeviceStateProvider(
         batteryManager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
     } catch (_: Exception) {
         -1
+    }
+
+    private fun readIsCharging(): Boolean = try {
+        val batteryManager = appContext.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val status = batteryManager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_STATUS) ?: -1
+
+            batteryManager?.isCharging == true ||
+                    status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                    status == BatteryManager.BATTERY_STATUS_FULL
+        } else {
+            @Suppress("DEPRECATION")
+            val intent = appContext.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            val status = intent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+            status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                    status == BatteryManager.BATTERY_STATUS_FULL
+        }
+    } catch (_: Exception) {
+        false
     }
 
     private fun readAirplaneMode(): Boolean = try {

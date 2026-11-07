@@ -14,6 +14,9 @@ data class DeviceStatePayload(
     @SerialName("batteryLevel")
     val batteryLevel: Int,
 
+    @SerialName("isCharging")
+    val isCharging: Boolean = false,
+
     @SerialName("isWifiConnected")
     val isWifiConnected: Boolean,
 

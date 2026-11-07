@@ -19,6 +19,7 @@ object DeviceStateTrigger {
 
     const val AIRPLANE_MODE = "AIRPLANE_MODE"
     const val BATTERY = "BATTERY"
+    const val CHARGING = "CHARGING"
     const val CONNECTIVITY = "CONNECTIVITY"
     const val BLUETOOTH = "BLUETOOTH"
     const val HEADSET = "HEADSET"
