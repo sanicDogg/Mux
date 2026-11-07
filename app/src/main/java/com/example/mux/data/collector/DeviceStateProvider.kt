@@ -237,32 +237,65 @@ class DeviceStateProvider(
 
     /**
      * Actively routed Bluetooth audio output (A2DP/SCO/LE Audio), if any.
-     *
-     * [AudioDeviceInfo.getProductName] frequently returns a model/SDP string
-     * (e.g. "A063" for AirPods) rather than the user-facing name, so we resolve
-     * the remote [android.bluetooth.BluetoothDevice] from its address and read
-     * its alias/name instead. If that is unavailable, we degrade to a
-     * profile-based friendly name.
      */
     @SuppressLint("MissingPermission")
     private fun readBluetoothAudioSinkName(): String = try {
-        val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-            ?: return ""
-        val audioDevice = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
-            .firstOrNull { device -> device.isSink && device.type in BLUETOOTH_AUDIO_TYPES }
-            ?: return ""
+        if (!canReadBluetoothNames()) return ""
 
-        // Preferred: map the audio device back to its BluetoothDevice and read
-        // the friendly name/alias the user sees in Bluetooth settings.
-        val address = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            audioDevice.address
-        } else {
-            null
+        val bluetoothManager = appContext.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager ?: return ""
+        val adapter = bluetoothManager.adapter ?: return ""
+        if (!adapter.isEnabled) return ""
+
+        val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        val activeDevices = audioManager?.getDevices(AudioManager.GET_DEVICES_OUTPUTS) ?: emptyArray()
+
+        val hasA2dp = activeDevices.any { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP }
+        val hasSco = activeDevices.any { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO }
+
+        var deviceName: String? = null
+
+        fun getNameFromProfile(profileId: Int): String? {
+            var name: String? = null
+            val latch = java.util.concurrent.CountDownLatch(1)
+
+            adapter.getProfileProxy(appContext, object : BluetoothProfile.ServiceListener {
+                override fun onServiceConnected(profile: Int, proxy: BluetoothProfile) {
+                    try {
+                        val connectedDevices = proxy.connectedDevices
+                        val device = connectedDevices.firstOrNull()
+                        if (device != null) {
+                            name = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                device.alias ?: device.name
+                            } else {
+                                device.name
+                            }
+                        }
+                    } catch (_: Exception) {
+                    } finally {
+                        adapter.closeProfileProxy(profile, proxy)
+                        latch.countDown()
+                    }
+                }
+
+                override fun onServiceDisconnected(profile: Int) {
+                    latch.countDown()
+                }
+            }, profileId)
+
+            latch.await(200, java.util.concurrent.TimeUnit.MILLISECONDS)
+            return name
         }
-        resolveBluetoothDeviceName(address)
-            ?.takeIf { it.isNotBlank() }
-            // Fallback when the address isn't exposed or names aren't readable.
-            ?: friendlyAudioDeviceName(audioDevice)
+
+        if (hasA2dp) {
+            deviceName = getNameFromProfile(BluetoothProfile.A2DP)
+        }
+        if (deviceName.isNullOrBlank() && hasSco) {
+            deviceName = getNameFromProfile(BluetoothProfile.HEADSET)
+        }
+
+        deviceName ?: activeDevices.firstOrNull { it.type in BLUETOOTH_AUDIO_TYPES }
+            ?.let { friendlyAudioDeviceName(it) } ?: ""
+
     } catch (_: Exception) {
         ""
     }
