@@ -3,11 +3,12 @@ name: Build and Sign Release APK
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
       - name: Checkout code
@@ -31,7 +32,7 @@ jobs:
         run: |
           BUILD_TOOL_VERSION=$(ls /usr/local/lib/android/sdk/build-tools/ | tail -n 1)
           echo "BUILD_TOOLS_VERSION=$BUILD_TOOL_VERSION" >> $GITHUB_ENV
-          echo "Используется версия Build Tools: $BUILD_TOOL_VERSION"
+          echo "Using Build Tools: $BUILD_TOOL_VERSION"
 
       - name: Sign APK
         uses: r0adkll/sign-android-release@v1
@@ -50,7 +51,7 @@ jobs:
           mv ${{ steps.sign_app.outputs.signedReleaseFile }} app/build/outputs/apk/release/Mux-Release-Signed.apk
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: "v${{ github.run_number }}"
           name: "Release v${{ github.run_number }}"
