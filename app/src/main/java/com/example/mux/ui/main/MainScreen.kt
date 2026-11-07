@@ -37,6 +37,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.window.core.layout.WindowWidthSizeClass
@@ -73,7 +75,11 @@ fun MainScreen(
     
     val onOpenMenu: () -> Unit = remember { { scope.launch { drawerState.open() } } }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(currentDestination) {
+        onAction(MainAction.CheckNotificationListener)
+    }
+
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         onAction(MainAction.CheckNotificationListener)
     }
 
