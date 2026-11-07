@@ -17,6 +17,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
@@ -74,6 +76,7 @@ fun MainScreen(
     val destinations = remember { MuxDestination.entries }
     
     val onOpenMenu: () -> Unit = remember { { scope.launch { drawerState.open() } } }
+    val onNavigate: (MuxDestination) -> Unit = remember(onAction) { { dest -> onAction(MainAction.Navigate(dest)) } }
 
     LaunchedEffect(currentDestination) {
         onAction(MainAction.CheckNotificationListener)
@@ -108,12 +111,13 @@ fun MainScreen(
                 )
             }
             AppScaffold(
+                destinations = destinations,
                 destination = currentDestination,
                 isCompact = isCompact,
                 snackbarHostState = snackbarHostState,
                 isNotificationListenerGranted = isNotificationListenerGranted,
                 onOpenMenu = onOpenMenu,
-                onNavigate = { dest -> onAction(MainAction.Navigate(dest)) },
+                onNavigate = onNavigate,
                 modifier = if (isCompact) Modifier else Modifier.weight(1f)
             )
         }
@@ -123,6 +127,7 @@ fun MainScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AppScaffold(
+    destinations: List<MuxDestination>,
     destination: MuxDestination,
     isCompact: Boolean,
     snackbarHostState: SnackbarHostState,
@@ -153,7 +158,16 @@ private fun AppScaffold(
                 )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        bottomBar = {
+            if (isCompact) {
+                AppNavigationBar(
+                    destinations = destinations,
+                    currentDestination = destination,
+                    onNavigate = onNavigate
+                )
+            }
+        }
     ) { innerPadding ->
         Crossfade(
             targetState = destination,
@@ -235,6 +249,30 @@ private fun AppDrawerContent(
                 selected = currentDestination == destination,
                 onClick = { onNavigate(destination) },
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun AppNavigationBar(
+    destinations: List<MuxDestination>,
+    currentDestination: MuxDestination,
+    onNavigate: (MuxDestination) -> Unit
+) {
+    NavigationBar {
+        destinations.forEach { destination ->
+            val labelStr = stringResource(destination.titleRes)
+            NavigationBarItem(
+                selected = currentDestination == destination,
+                onClick = { onNavigate(destination) },
+                icon = {
+                    Icon(
+                        imageVector = destination.icon,
+                        contentDescription = null // Null because label is announced
+                    )
+                },
+                label = { Text(labelStr) }
             )
         }
     }
