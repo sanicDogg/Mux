@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -57,14 +55,15 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.mux.R
 import com.example.mux.data.model.ForwardingStatus
 import com.example.mux.data.model.NotificationPayload
 import com.example.mux.data.repository.NotificationLogEntry
 import com.example.mux.ui.components.FilterChipGroup
+import com.example.mux.ui.components.ListenerStatusHeader
 import com.example.mux.ui.components.PermissionBanner
+import com.example.mux.ui.components.RawJsonPayload
 import com.example.mux.ui.notifications.fast.NotificationStatusFilter
 import com.example.mux.ui.theme.MuxTheme
 import kotlinx.coroutines.launch
@@ -78,7 +77,6 @@ private const val TYPE_PENDING = "pending"
 
 private val SuccessGreen = Color(0xFF4CAF50)
 private val FailedRed = Color(0xFFF44336)
-private val DisconnectedAmber = Color(0xFFFFB74D)
 
 /**
  * One formatter per thread, shared by every row. `SimpleDateFormat` compiles its pattern
@@ -264,54 +262,24 @@ private fun FastStatusHeader(
     onAction: (FastNotificationAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
+    ListenerStatusHeader(
+        isActive = header.isServiceConnected,
+        activeLabel = stringResource(R.string.listener_active),
+        inactiveLabel = stringResource(R.string.listener_disconnected),
+        targetLabel = stringResource(R.string.forwarding_target, header.serverEndpointUrl),
         modifier = modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
-            .padding(12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val statusBadgeColor =
-                    if (header.isServiceConnected) SuccessGreen else DisconnectedAmber
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .background(statusBadgeColor, shape = CircleShape)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = stringResource(
-                        if (header.isServiceConnected) R.string.listener_active else R.string.listener_disconnected
-                    ),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = statusBadgeColor
-                )
-            }
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = stringResource(R.string.forwarding_target, header.serverEndpointUrl),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+        IconButton(onClick = { onAction(FastNotificationAction.FetchActiveNotifications) }) {
+            Icon(
+                imageVector = Icons.Rounded.Refresh,
+                contentDescription = stringResource(R.string.acc_fetch_active)
             )
         }
-
-        Row {
-            IconButton(onClick = { onAction(FastNotificationAction.FetchActiveNotifications) }) {
-                Icon(
-                    imageVector = Icons.Rounded.Refresh,
-                    contentDescription = stringResource(R.string.acc_fetch_active)
-                )
-            }
-            IconButton(onClick = { onAction(FastNotificationAction.ClearLogs) }) {
-                Icon(
-                    imageVector = Icons.Rounded.Delete,
-                    contentDescription = stringResource(R.string.acc_clear_logs)
-                )
-            }
+        IconButton(onClick = { onAction(FastNotificationAction.ClearLogs) }) {
+            Icon(
+                imageVector = Icons.Rounded.Delete,
+                contentDescription = stringResource(R.string.acc_clear_logs)
+            )
         }
     }
 }
@@ -602,28 +570,7 @@ private fun FastNotificationInspectorPane(
                     }
                 }
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color(0xFF1E1E1E), RoundedCornerShape(8.dp))
-                        .padding(12.dp)
-                ) {
-                    Column {
-                        Text(
-                            text = stringResource(R.string.raw_json_payload),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFFFFD54F),
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = selectedJson ?: payload.toString(),
-                            color = Color(0xFF81C784),
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 12.sp
-                        )
-                    }
-                }
+                RawJsonPayload(json = selectedJson ?: payload.toString())
             }
         }
     }

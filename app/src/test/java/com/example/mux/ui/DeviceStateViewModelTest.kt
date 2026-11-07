@@ -7,6 +7,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -22,13 +23,17 @@ class DeviceStateViewModelTest {
 
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var tracker: FakeDeviceStateTracker
+    private lateinit var settingsRepository: FakeSettingsRepository
+    private lateinit var dataForwarder: FakeDataForwarder
     private lateinit var viewModel: DeviceStateViewModel
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         tracker = FakeDeviceStateTracker()
-        viewModel = DeviceStateViewModel(tracker)
+        settingsRepository = FakeSettingsRepository()
+        dataForwarder = FakeDataForwarder()
+        viewModel = DeviceStateViewModel(tracker, settingsRepository, dataForwarder)
     }
 
     @After
@@ -69,6 +74,27 @@ class DeviceStateViewModelTest {
         val status = viewModel.uiState.value.sendStatus
         assertTrue(status is DeviceStateSendStatus.Failure)
         assertFalse(viewModel.uiState.value.isSending)
+        collectJob.cancel()
+    }
+
+    @Test
+    fun testResendForwardsLatestPayload() = runTest(testDispatcher) {
+        val collectJob = backgroundScope.launch { viewModel.uiState.collect() }
+
+        tracker.emit(com.example.mux.data.model.DeviceStatePayload(
+            batteryLevel = 100,
+            isWifiConnected = true,
+            signalStrength = "high",
+            timestamp = 0L,
+            timestampIso = "2026-01-01T00:00:00.000Z"
+        ))
+        dataForwarder.shouldSucceed = true
+        viewModel.resend()
+        advanceUntilIdle()
+
+        assertEquals(DeviceStateSendStatus.Success, viewModel.uiState.value.sendStatus)
+        assertEquals("http://127.0.0.1:8080/api/device-state", dataForwarder.lastEndpointUrl)
+        assertFalse(dataForwarder.lastPayloadSent.isNullOrBlank())
         collectJob.cancel()
     }
 }

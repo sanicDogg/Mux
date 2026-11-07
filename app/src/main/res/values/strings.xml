@@ -58,6 +58,10 @@
     <string name="device_state_on">On</string>
     <string name="device_state_off">Off</string>
     <string name="device_state_send_now">Send now</string>
+    <string name="device_state_listener_active">Device State Collector Active</string>
+    <string name="device_state_listener_inactive">Device State Collector Inactive</string>
+    <string name="device_state_forwarding_disabled">Device State Forwarding Disabled</string>
+    <string name="device_state_resend">Resend / Forward Payload</string>
 
     <!-- Device state settings -->
     <string name="device_state_channel_title">Device State Channel</string>
