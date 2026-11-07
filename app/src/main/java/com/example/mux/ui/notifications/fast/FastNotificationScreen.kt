@@ -262,10 +262,17 @@ private fun FastStatusHeader(
     onAction: (FastNotificationAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isActive = header.isServiceConnected && header.isForwardingEnabled
+    val inactiveLabel = if (!header.isServiceConnected) {
+        stringResource(R.string.listener_disconnected)
+    } else {
+        stringResource(R.string.notification_forwarding_disabled)
+    }
+
     ListenerStatusHeader(
-        isActive = header.isServiceConnected,
+        isActive = isActive,
         activeLabel = stringResource(R.string.listener_active),
-        inactiveLabel = stringResource(R.string.listener_disconnected),
+        inactiveLabel = inactiveLabel,
         targetLabel = stringResource(R.string.forwarding_target, header.serverEndpointUrl),
         modifier = modifier
     ) {

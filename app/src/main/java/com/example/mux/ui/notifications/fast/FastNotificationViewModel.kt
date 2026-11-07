@@ -35,6 +35,7 @@ private val prettyJson = Json { prettyPrint = true }
 @Immutable
 data class FastListenerHeader(
     val isServiceConnected: Boolean = false,
+    val isForwardingEnabled: Boolean = true,
     val serverEndpointUrl: String = ""
 )
 
@@ -101,9 +102,14 @@ class FastNotificationViewModel(
      */
     val header: StateFlow<FastListenerHeader> = combine(
         isServiceConnectedFlow,
+        settingsRepository.isNotificationForwardingEnabled,
         settingsRepository.serverUrl
-    ) { isConnected, serverUrl ->
-        FastListenerHeader(isServiceConnected = isConnected, serverEndpointUrl = serverUrl)
+    ) { isConnected, isForwardingEnabled, serverUrl ->
+        FastListenerHeader(
+            isServiceConnected = isConnected,
+            isForwardingEnabled = isForwardingEnabled,
+            serverEndpointUrl = serverUrl
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), FastListenerHeader())
 
     /**

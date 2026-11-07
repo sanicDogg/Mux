@@ -16,6 +16,7 @@
     <string name="search_placeholder">Search by App, Title, Package, or ID…</string>
     <string name="listener_active">Listener Active</string>
     <string name="listener_disconnected">Listener Disconnected</string>
+    <string name="notification_forwarding_disabled">Notification Forwarding Disabled</string>
     <string name="forwarding_target">Forwarding Target: %1$s</string>
     <string name="status_label">Status:</string>
     <string name="no_notifications">No intercepted notifications.</string>
