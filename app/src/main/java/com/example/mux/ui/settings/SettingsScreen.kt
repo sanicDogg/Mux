@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
@@ -49,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -146,12 +148,8 @@ fun SettingsContent(
         SettingsSection(
             title = "Notification Interception",
             icon = Icons.Rounded.Notifications,
-            trailing = {
-                Switch(
-                    checked = state.isNotificationForwardingEnabled,
-                    onCheckedChange = onToggleNotificationForwarding
-                )
-            }
+            headerToggleChecked = state.isNotificationForwardingEnabled,
+            onHeaderToggleChange = onToggleNotificationForwarding
         ) {
             OutlinedTextField(
                 value = serverUrlInput,
@@ -363,8 +361,22 @@ private fun SettingsSection(
     icon: ImageVector,
     modifier: Modifier = Modifier,
     trailing: (@Composable () -> Unit)? = null,
+    headerToggleChecked: Boolean? = null,
+    onHeaderToggleChange: ((Boolean) -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val headerRowModifier = if (headerToggleChecked != null && onHeaderToggleChange != null) {
+        Modifier
+            .fillMaxWidth()
+            .toggleable(
+                value = headerToggleChecked,
+                role = Role.Switch,
+                onValueChange = onHeaderToggleChange
+            )
+    } else {
+        Modifier.fillMaxWidth()
+    }
+
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -376,7 +388,7 @@ private fun SettingsSection(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = headerRowModifier,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
@@ -391,7 +403,14 @@ private fun SettingsSection(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
-                trailing?.invoke()
+                if (headerToggleChecked != null) {
+                    Switch(
+                        checked = headerToggleChecked,
+                        onCheckedChange = null
+                    )
+                } else {
+                    trailing?.invoke()
+                }
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -412,7 +431,13 @@ private fun SettingToggleRow(
     badge: String? = null
 ) {
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .toggleable(
+                value = checked,
+                role = Role.Switch,
+                onValueChange = onCheckedChange
+            ),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -441,7 +466,7 @@ private fun SettingToggleRow(
         Spacer(modifier = Modifier.width(12.dp))
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = null
         )
     }
 }
