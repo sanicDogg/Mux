@@ -2,7 +2,12 @@ package com.example.mux.service
 
 import android.content.ClipboardManager
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import com.example.mux.data.collector.DeviceStateCollector
 import com.example.mux.data.collector.DeviceStateEvents
 import com.example.mux.data.collector.DeviceStateProvider
@@ -40,6 +45,7 @@ class DeviceStateEngine(
     private val events = DeviceStateEvents()
     private var receiver: DeviceStateBroadcastReceiver? = null
     private var clipboardListener: ClipboardManager.OnPrimaryClipChangedListener? = null
+    private var foregroundObserver: DefaultLifecycleObserver? = null
     private var forwardingJob: Job? = null
 
     private val provider = DeviceStateProvider(context, settingsRepository)
@@ -75,6 +81,18 @@ class DeviceStateEngine(
             events.publish(DeviceStateTrigger.CLIPBOARD)
         }.also { listener -> clipboard?.addPrimaryClipChangedListener(listener) }
 
+        // Re-capture whenever the app returns to the foreground. The foreground
+        // guard inside readClipboardText() only passes while an activity is
+        // visible, so this guarantees clipboard text is read on resume instead
+        // of being denied while the app was backgrounded.
+        val observer = object : DefaultLifecycleObserver {
+            override fun onResume(owner: LifecycleOwner) {
+                events.publish(DeviceStateTrigger.FOREGROUND)
+            }
+        }
+        foregroundObserver = observer
+        mainHandler.post { ProcessLifecycleOwner.get().lifecycle.addObserver(observer) }
+
         Log.d(TAG, "Device state engine started")
     }
 
@@ -90,6 +108,11 @@ class DeviceStateEngine(
             runCatching { clipboard?.removePrimaryClipChangedListener(listener) }
         }
         clipboardListener = null
+
+        foregroundObserver?.let { observer ->
+            mainHandler.post { ProcessLifecycleOwner.get().lifecycle.removeObserver(observer) }
+        }
+        foregroundObserver = null
 
         forwardingJob?.cancel()
         forwardingJob = null
@@ -142,5 +165,8 @@ class DeviceStateEngine(
 
     private companion object {
         const val TAG = "DeviceStateEngine"
+
+        /** Main-thread handler for ProcessLifecycleOwner registration. */
+        private val mainHandler = Handler(Looper.getMainLooper())
     }
 }

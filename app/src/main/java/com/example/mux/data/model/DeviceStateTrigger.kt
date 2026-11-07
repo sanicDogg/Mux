@@ -14,6 +14,9 @@ object DeviceStateTrigger {
     /** Explicitly requested by the user (button / API call). */
     const val MANUAL = "MANUAL"
 
+    /** App returned to the foreground (activity resumed). */
+    const val FOREGROUND = "FOREGROUND"
+
     const val AIRPLANE_MODE = "AIRPLANE_MODE"
     const val BATTERY = "BATTERY"
     const val CONNECTIVITY = "CONNECTIVITY"
