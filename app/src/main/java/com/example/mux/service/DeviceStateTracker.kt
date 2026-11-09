@@ -15,6 +15,9 @@ interface DeviceStateTracker {
     /** Latest captured snapshot, or null before the first capture. */
     val lastCaptured: StateFlow<DeviceStatePayload?>
 
+    /** Captures the current state without forwarding it downstream. */
+    suspend fun capture(trigger: String? = null): DeviceStatePayload
+
     /** Captures the current state and forwards it to the device-state channel. */
     suspend fun captureAndSend(): Result<Unit>
 }

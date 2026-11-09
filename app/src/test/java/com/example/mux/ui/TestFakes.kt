@@ -52,6 +52,16 @@ class FakeDeviceStateTracker : DeviceStateTracker {
         _lastCaptured.value = state
     }
 
+    override suspend fun capture(trigger: String?): DeviceStatePayload {
+        captureCallCount++
+        return _lastCaptured.value ?: DeviceStatePayload(
+            batteryLevel = 0,
+            isWifiConnected = false,
+            timestamp = 0L,
+            timestampIso = "",
+        )
+    }
+
     override suspend fun captureAndSend(): Result<Unit> {
         captureCallCount++
         return if (shouldSucceed) Result.success(Unit) else Result.failure(Exception("Capture failed"))

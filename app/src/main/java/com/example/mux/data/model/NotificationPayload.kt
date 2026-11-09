@@ -47,7 +47,15 @@ data class NotificationPayload(
     val type: String = "NOTIFICATION",
     
     @SerialName("isOngoing")
-    val isOngoing: Boolean = false
+    val isOngoing: Boolean = false,
+
+    /**
+     * Device hardware/connectivity state captured at the moment this
+     * notification arrived. Null when device-state capture is disabled or
+     * unavailable, so the notification payload stays lean by default.
+     */
+    @SerialName("deviceState")
+    val deviceState: DeviceStatePayload? = null,
 )
 
 /**

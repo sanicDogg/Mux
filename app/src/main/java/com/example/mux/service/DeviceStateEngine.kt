@@ -121,6 +121,10 @@ class DeviceStateEngine(
         Log.d(TAG, "Device state engine stopped")
     }
 
+    /** Captures the current state without forwarding it downstream. */
+    override suspend fun capture(trigger: String?): DeviceStatePayload =
+        collector.capture(trigger)
+
     /**
      * Captures a snapshot on demand and forwards it to the device-state channel.
      *

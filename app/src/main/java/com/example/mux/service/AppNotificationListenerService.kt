@@ -10,6 +10,8 @@ import com.example.mux.data.collector.NotificationDataCollector
 import com.example.mux.data.forwarder.DataForwarder
 import com.example.mux.data.forwarder.KtorDataForwarder
 import com.example.mux.MuxApplication
+import com.example.mux.data.model.DeviceStatePayload
+import com.example.mux.data.model.DeviceStateTrigger
 import com.example.mux.data.model.ForwardingStatus
 import com.example.mux.data.model.NotificationPayload
 import com.example.mux.data.repository.InMemoryNotificationLogRepository
@@ -86,6 +88,7 @@ class AppNotificationListenerService : NotificationListenerService() {
                 }
 
                 payload = extractNotificationPayload(sbn)
+                    .copy(deviceState = captureDeviceState())
                 _lastCapturedNotification.value = payload
                 notificationCollector.emitData(payload)
 
@@ -144,10 +147,18 @@ class AppNotificationListenerService : NotificationListenerService() {
             return@withContext
         }
 
+        val deviceState = captureDeviceState()
         val payloads = activeNotifs.mapNotNull { sbn ->
             val pkgName = sbn.packageName ?: return@mapNotNull null
             if (pkgName == packageName) return@mapNotNull null
             extractNotificationPayload(sbn)
+        }.toMutableList()
+
+        // A refresh forwards the whole active-notification set as a single array,
+        // so embed the snapshot once (on the first item) instead of repeating the
+        // same device state on every notification in the batch.
+        payloads.firstOrNull()?.let { first ->
+            payloads[0] = first.copy(deviceState = deviceState)
         }
 
         if (payloads.isEmpty()) return@withContext
@@ -175,7 +186,28 @@ class AppNotificationListenerService : NotificationListenerService() {
     /** Captures the current device state and forwards it to the device-state channel. */
     suspend fun captureAndSendDeviceState(): Result<Unit> = deviceStateTracker.captureAndSend()
 
-    private fun extractNotificationPayload(sbn: StatusBarNotification): NotificationPayload {
+    /**
+     * Captures a fresh device-state snapshot to embed in a notification payload.
+     *
+     * Returns `null` when device-state forwarding is disabled (the notification
+     * payload stays lean) or when capture fails, so a broken sensor/permission
+     * can never take down the notification pipeline.
+     */
+    private suspend fun captureDeviceState(): DeviceStatePayload? = try {
+        if (!settingsRepository.isDeviceStateForwardingEnabled()) {
+            null
+        } else {
+            deviceStateTracker.capture(DeviceStateTrigger.NOTIFICATION)
+        }
+    } catch (e: Exception) {
+        Log.w(TAG, "Failed to capture device state for notification: ${e.message}")
+        null
+    }
+
+    private fun extractNotificationPayload(
+        sbn: StatusBarNotification,
+        deviceState: DeviceStatePayload? = null,
+    ): NotificationPayload {
         val notification = sbn.notification
         val extras = notification?.extras
 
@@ -218,7 +250,8 @@ class AppNotificationListenerService : NotificationListenerService() {
             channelId = channelId,
             notificationKey = sbn.key,
             type = "NOTIFICATION",
-            isOngoing = isOngoing
+            isOngoing = isOngoing,
+            deviceState = deviceState,
         )
     }
 

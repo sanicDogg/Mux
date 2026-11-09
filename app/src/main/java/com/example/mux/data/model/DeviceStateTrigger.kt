@@ -26,4 +26,5 @@ object DeviceStateTrigger {
     const val VOLUME = "VOLUME"
     const val RINGER_MODE = "RINGER_MODE"
     const val CLIPBOARD = "CLIPBOARD"
+    const val NOTIFICATION = "NOTIFICATION"
 }
