@@ -57,7 +57,7 @@ class SettingsRepositoryImpl(
         val KEY_DEVICE_STATE_FORWARDING_ENABLED = booleanPreferencesKey("device_state_forwarding_enabled")
         val KEY_CLIPBOARD_CAPTURE_ENABLED = booleanPreferencesKey("clipboard_capture_enabled")
 
-        const val DEFAULT_SERVER_URL = "http://192.168.1.100:8080/api/notifications"
+        const val DEFAULT_SERVER_URL = "http://192.168.1.100:8080/api/pushes"
         const val DEFAULT_DEVICE_STATE_URL = "http://192.168.1.100:8080/api/device-state"
         const val DEFAULT_FORWARDING_ENABLED = true
         const val DEFAULT_DEVICE_STATE_FORWARDING_ENABLED = true

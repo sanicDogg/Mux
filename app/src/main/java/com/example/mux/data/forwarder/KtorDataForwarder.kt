@@ -102,7 +102,7 @@ class KtorDataForwarder(
     }
 
     companion object {
-        const val DEFAULT_FALLBACK_URL = "http://192.168.1.100:8080/api/notifications"
+        const val DEFAULT_FALLBACK_URL = "http://192.168.1.100:8080/api/pushes"
         const val DEFAULT_DEVICE_STATE_URL = "http://192.168.1.100:8080/api/device-state"
     }
 }

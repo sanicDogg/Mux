@@ -155,7 +155,7 @@ fun SettingsContent(
                 value = serverUrlInput,
                 onValueChange = { serverUrlInput = it },
                 label = { Text("Target Endpoint URL") },
-                placeholder = { Text("http://192.168.1.100:8080/api/notifications") },
+                placeholder = { Text("http://192.168.1.100:8080/api/pushes") },
                 singleLine = true,
                 leadingIcon = { Icon(imageVector = Icons.Rounded.Link, contentDescription = null) },
                 modifier = Modifier.fillMaxWidth()
@@ -477,7 +477,7 @@ fun SettingsScreenPreview() {
     MuxTheme {
         SettingsContent(
             state = SettingsUiState(
-                serverUrl = "http://192.168.1.100:8080/api/notifications",
+                serverUrl = "http://192.168.1.100:8080/api/pushes",
                 apiKey = "token_12345",
                 isNotificationForwardingEnabled = true,
                 deviceStateUrl = "http://192.168.1.100:8080/api/device-state",

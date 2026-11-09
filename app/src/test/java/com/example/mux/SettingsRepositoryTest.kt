@@ -9,7 +9,7 @@ class SettingsRepositoryTest {
 
     @Test
     fun testDefaultSettingsConstants() {
-        assertEquals("http://192.168.1.100:8080/api/notifications", SettingsRepositoryImpl.DEFAULT_SERVER_URL)
+        assertEquals("http://192.168.1.100:8080/api/pushes", SettingsRepositoryImpl.DEFAULT_SERVER_URL)
         assertTrue(SettingsRepositoryImpl.DEFAULT_FORWARDING_ENABLED)
         assertEquals("server_url", SettingsRepositoryImpl.KEY_SERVER_URL.name)
         assertEquals("notification_forwarding_enabled", SettingsRepositoryImpl.KEY_NOTIFICATION_FORWARDING_ENABLED.name)
